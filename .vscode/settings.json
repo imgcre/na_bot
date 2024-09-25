@@ -1,0 +1,9 @@
+{
+    "python.formatting.provider": "none",
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "terminal.integrated.env.windows": {
+        "PYPPETEER_CHROMIUM_REVISION": "1226537"
+    }
+}

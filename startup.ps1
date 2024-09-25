@@ -1,0 +1,2 @@
+$env:PYPPETEER_CHROMIUM_REVISION=1226537
+python ./app.py

@@ -1,0 +1,2 @@
+mirai==0.2.6.2
+inflection==0.5.1

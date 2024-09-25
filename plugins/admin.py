@@ -819,7 +819,7 @@ class Admin(Plugin):
                 if key.qual == ReslovedCensorSpeechQual.BASE and is_in_white_list:
                     continue
 
-                if key.qual == ReslovedCensorSpeechQual.AT and len(key.args) > 0 and int(key.args[0]) != member.id:
+                if key.qual == ReslovedCensorSpeechQual.AT and member.id not in (int(a) for a in key.args):
                     continue
 
                 for w_item in words:

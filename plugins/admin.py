@@ -753,6 +753,9 @@ class Admin(Plugin):
         with open(self.path.data.of_file('censor_speech.json'), encoding='utf-8') as f:
             censor_speech_o: dict = json.load(f)
 
+        with open(self.path.data.of_file('forbidden_market_face.json'), encoding='utf-8') as f:
+            forbidden_market_face_o: dict[str, int] = json.load(f)
+
         url_regex = r'(https?:\/\/)?((([0-9a-z]+\.)+[a-z]+)|(([0-9]{1,3}\.){3}[0-9]{1,3}))(:[0-9]+)?(\/[0-9a-z%/.\-_]*)?(\?[0-9a-z=&%_\-]*)?(\#[0-9a-z=&%_\-]*)?'
         url_pattern  = re.compile(url_regex)
 
@@ -768,12 +771,15 @@ class Admin(Plugin):
                         return False
                     return True
                 def map_msg_comp(c):
-                    if isinstance(c, (Plain, str, Image)):
+                    if isinstance(c, (Plain, str, Image, Face)):
                         return c
                     if isinstance(c, MusicShare):
                         return f'音乐分享《{c.title}》--{c.summary}'
                     if isinstance(c, App):
                         return f'APP: {c.content}'
+                    if isinstance(c, MarketFace):
+                        face_name = next((k for k, v in forbidden_market_face_o.items() if v == c.id), '未知')
+                        return f'表情{{{face_name}:{c.name}}}'
                     logger.debug(f'{c=}')
                     return f'{type(c)}'
 
@@ -854,10 +860,7 @@ class Admin(Plugin):
                 if isinstance(c, Quote):
                     ...
                 if isinstance(c, MarketFace):
-                    if c.id in (
-                        231030, #果糖
-                        208511, #果糖
-                    ):
+                    if c.id in forbidden_market_face_o.values():
                         await try_recall('涉及其他主播', '涉及其他主播')
                         return
                 if not is_in_white_list:

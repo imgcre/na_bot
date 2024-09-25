@@ -467,7 +467,7 @@ class Gpt(Plugin):
                     response = await self.create_talk(history, limited_history=limited_history)
                     logger.debug(f'{response=}')
                 except:
-                    traceback.logger.debug_exc()
+                    traceback.print_exc()
                     comm_failed = True
                     break
                 logger.debug('[结束gpt请求]')

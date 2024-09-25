@@ -14,6 +14,9 @@ class FestivalAchv(AchvEnum):
     MID_AUTUMN_FESTIVAL = 0, '月饼', '在中秋节当天发送"中秋快乐"', AchvOpts(rarity=AchvRarity.RARE, display='🥮', dynamic_deletable=True)
     NATIONAL_DAY = 1, '国旗', '在国庆节当天发送"国庆快乐"', AchvOpts(rarity=AchvRarity.RARE, display='🇨🇳', dynamic_deletable=True)
     FURSUIT_FRIDAY = 2, '肉垫', '在毛毛星期五当天发送包含"毛五"的消息', AchvOpts(rarity=AchvRarity.UNCOMMON, display='🐾', dynamic_deletable=True)
+    SPRING_FESTIVAL = 3, '爆竹', '在春节当天发送"新年快乐"', AchvOpts(rarity=AchvRarity.RARE, display='🧨', dynamic_deletable=True)
+    CHRISTMAS = 4, '圣诞树', '在圣诞节当天发送"圣诞快乐"', AchvOpts(rarity=AchvRarity.RARE, display='🎄', dynamic_deletable=True)
+
 class FursuitFriday():
     def countdown(self):
         today = datetime.now()
@@ -53,6 +56,16 @@ class Festival(Plugin, AchvCustomizer):
                 festival=FursuitFriday(), 
                 trigger_regex='毛五',
                 associated_achv=FestivalAchv.FURSUIT_FRIDAY
+            ),
+            FestivalItem(
+                festival=self.library.get_festival('春节'),
+                trigger_regex='新年.*?快乐',
+                associated_achv=FestivalAchv.SPRING_FESTIVAL
+            ),
+            FestivalItem(
+                festival=self.library.get_festival('圣诞节'),
+                trigger_regex='圣诞.*?快乐|christmas',
+                associated_achv=FestivalAchv.CHRISTMAS
             ),
         ]
         ...

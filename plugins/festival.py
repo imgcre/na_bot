@@ -12,8 +12,8 @@ if TYPE_CHECKING:
 
 class FestivalAchv(AchvEnum):
     MID_AUTUMN_FESTIVAL = 0, '月饼', '在中秋节当天发送"中秋快乐"', AchvOpts(rarity=AchvRarity.RARE, display='🥮', dynamic_deletable=True)
-    NATIONAL_DAY = 1, '国旗', '在国庆节当天发送"中秋快乐"', AchvOpts(rarity=AchvRarity.RARE, display='🇨🇳', dynamic_deletable=True)
-    FURSUIT_FRIDAY = 2, '肉垫', '在猫猫星期五当天发送包含"毛五"的消息', AchvOpts(rarity=AchvRarity.UNCOMMON, display='🐾', dynamic_deletable=True)
+    NATIONAL_DAY = 1, '国旗', '在国庆节当天发送"国庆快乐"', AchvOpts(rarity=AchvRarity.RARE, display='🇨🇳', dynamic_deletable=True)
+    FURSUIT_FRIDAY = 2, '肉垫', '在毛毛星期五当天发送包含"毛五"的消息', AchvOpts(rarity=AchvRarity.UNCOMMON, display='🐾', dynamic_deletable=True)
 class FursuitFriday():
     def countdown(self):
         today = datetime.now()

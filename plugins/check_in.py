@@ -2,10 +2,10 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 import typing
 from mirai import At, GroupMessage
-from plugin import Inject, Plugin, any_instr, delegate, enable_backup, nudge_instr, top_instr, route, InstrAttr
+from plugin import AchvCustomizer, Inject, Plugin, any_instr, delegate, enable_backup, nudge_instr, top_instr, route, InstrAttr
 from mirai.models.message import Image
 from mirai.models.entities import GroupMember
-from utilities import AchvEnum, AchvOpts, AchvRarity, GroupLocalStorage, GroupLocalStorageAsEvent, GroupMemberOp
+from utilities import AchvEnum, AchvOpts, AchvRarity, AdminType, GroupLocalStorage, GroupLocalStorageAsEvent, GroupMemberOp
 import pytz
 from datetime import datetime
 import time
@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from plugins.renderer import Renderer
     from plugins.achv import Achv
+    from plugins.admin import Admin
 
 class CheckInAchv(AchvEnum):
     CHAMPION = 0, '火急火燎', '获得某日签到第一名', AchvOpts(display='✨')
@@ -24,6 +25,7 @@ class CheckInAchv(AchvEnum):
     PERFECT_ATTENDANCE = 2, '全勤', '连续签满一个自然月', AchvOpts(rarity=AchvRarity.RARE, display='🈵')
     UNITY_IS_STRENGTH = 3, '众人拾柴火焰高', '同一天有50人及以上参与签到', AchvOpts(rarity=AchvRarity.EPIC)
     HUGGING_FACE = 4, '助人为乐', '帮助他人签到100次', AchvOpts(rarity=AchvRarity.RARE, custom_obtain_msg='抱了抱大家', target_obtained_cnt=100, display='🤗')
+    CHECKED_IN_TODAY = 5, '已签到', '今日已签到时自动获取', AchvOpts(display_pinned=True, locked=True, hidden=True, display='✨️', display_weight=-1, dynamic_obtained=True)
 
 class AlreadyCheckInException(Exception):
     def __init__(self):
@@ -115,14 +117,20 @@ class CheckInMan():
 
 @route('check_in')
 @enable_backup
-class CheckIn(Plugin):
+class CheckIn(Plugin, AchvCustomizer):
     gls: GroupLocalStorage[CheckInMan] = GroupLocalStorage[CheckInMan]()
     renderer: Inject['Renderer']
     achv: Inject['Achv']
+    admin: Inject['Admin']
 
     @delegate()
     async def is_checked_in_today(self, man: Optional[CheckInMan]):
         return man is not None and man.get_checkin_ts_today() is not None
+
+    async def is_achv_obtained(self, e: 'AchvEnum'):
+        if e is CheckInAchv.CHECKED_IN_TODAY:
+            return await self.is_checked_in_today()
+        return False
     
     @delegate()
     async def get_checkin_ts_today(self, man: Optional[CheckInMan]):
@@ -157,10 +165,10 @@ class CheckIn(Plugin):
     async def re_check_in_cmd(self):
         return '还在写，别着急！'
     
-    # @admin
-    # @top_instr('取消签到', InstrAttr.FORECE_BACKUP)
-    # async def cancel_check_in_cmd(self, man: CheckInMan):
-    #     man.checkin_ts = [ts for ts in man.checkin_ts if ts < man.get_start_ts_of_today()]
+    @top_instr('取消签到', InstrAttr.FORECE_BACKUP)
+    async def cancel_check_in_cmd(self, man: CheckInMan):
+        async with self.admin.privilege(type=AdminType.SUPER):
+            man.checkin_ts = [ts for ts in man.checkin_ts if ts < man.get_start_ts_of_today()]
         
     # @admin
     # @top_instr('帮群友补签', InstrAttr.NO_ALERT_CALLER, InstrAttr.FORECE_BACKUP)
@@ -232,6 +240,7 @@ class CheckIn(Plugin):
             await self.achv.submit(CheckInAchv.PERFECT_ATTENDANCE, silent=silent)
 
         await op.nudge()
+        await self.achv.update_member_name()
 
         if not silent:
             await self.renderer.render_as_task(url='check-in', duration=5, keep_last=True, data={

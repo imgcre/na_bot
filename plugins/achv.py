@@ -205,12 +205,20 @@ class Achv(Plugin, InjectNotifier):
         await self.update_member_name()
         return True
     
-    # return infos
     @delegate()
     async def get_obtained(self, man: Optional[CollectedAchvMan], *, include_hidden: bool=False):
         if man is None: return []
-
-        return man.get_obtained(include_hidden=include_hidden)
+        obtained_achvs = man.get_obtained(include_hidden=include_hidden)
+        for p, em in self.registed_achv.items():
+            if not isinstance(p, AchvCustomizer): continue
+            for e in em:
+                e: AchvEnum
+                info: AchvInfo = e.value
+                if not include_hidden and info.opts.hidden: continue
+                if not info.opts.dynamic_obtained: continue
+                if await p.is_achv_obtained(e):
+                    obtained_achvs.append(e)
+        return obtained_achvs
     
     def group_by_rarity(self, achvs: list[AchvEnum]):
         def comp(it: AchvEnum):
@@ -445,7 +453,7 @@ class Achv(Plugin, InjectNotifier):
         weared_achv_info_kv: dict[str, AchvInfo] = {}
 
         if man is not None:
-            for e in man.get_obtained(include_hidden=True):
+            for e in await self.get_obtained(include_hidden=True):
                 info = typing.cast(AchvInfo, e.value)
                 if info.opts.display_pinned:
                     weared_achv_info_kv[info.get_display_text()] = info

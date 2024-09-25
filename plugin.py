@@ -1130,9 +1130,11 @@ class InjectNotifier():
     ...
 
 class AchvCustomizer():
-    @abstractmethod
     async def is_achv_deletable(self, e: 'AchvEnum') -> bool:
-        ...
+        return False
+    
+    async def is_achv_obtained(self, e: 'AchvEnum') -> bool:
+        return False
 
 class AllLoadedNotifier():
     @abstractmethod

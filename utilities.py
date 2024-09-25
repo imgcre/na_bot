@@ -294,6 +294,7 @@ class AchvOpts():
     min_display_durtion: Optional[int] = field(compare=False, default=None)
     display_pinned: bool = field(compare=False, default=False)
     unit: str = field(compare=False, default='个')
+    dynamic_obtained: bool = field(compare=False, default=False)
 
     @property
     def formatted_target_obtained_cnt(self):

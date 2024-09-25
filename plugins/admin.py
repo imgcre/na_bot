@@ -185,18 +185,21 @@ class EffectiveSpeechMan():
 class ReslovedCensorSpeechQual(Enum):
     BASE = auto()
     ALL = auto()
+    AT = auto()
 
 @dataclass
 class ReslovedCensorSpeechKey():
     qual: ReslovedCensorSpeechQual
     reason: str
+    args: list
     
     @classmethod
     def from_expr(cls, expr: str):
         reason, *remains = expr.split(':')
         return cls(
             reason=reason,
-            qual=ReslovedCensorSpeechQual[remains[0].upper()] if len(remains) > 0 else ReslovedCensorSpeechQual.BASE
+            qual=ReslovedCensorSpeechQual[remains[0].upper()] if len(remains) > 0 else ReslovedCensorSpeechQual.BASE,
+            args=remains
         )
 
 @route('管理')
@@ -814,6 +817,9 @@ class Admin(Plugin):
             for expr, words in censor_speech_o.items():
                 key = ReslovedCensorSpeechKey.from_expr(expr)
                 if key.qual == ReslovedCensorSpeechQual.BASE and is_in_white_list:
+                    continue
+
+                if key.qual == ReslovedCensorSpeechQual.AT and len(key.args) > 0 and int(key.args[0]) != member.id:
                     continue
 
                 for w_item in words:

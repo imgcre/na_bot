@@ -268,7 +268,7 @@ class Fur(Plugin):
         return await self.deliver_light_bulb()
         ...
 
-    @top_instr('(来(只|点|份|条|头|个|碗|吨|块|把|双|群|匹|位|名|根|颗|朵|片|张|本|支|段|架|套|滴|幅|座|盘|所|斤|串|台|壶|瓶|杯)|看看)(?P<expr>.*?)', InstrAttr.NO_ALERT_CALLER, InstrAttr.FORECE_BACKUP)
+    @top_instr('((来|吃)(只|点|份|条|头|个|碗|吨|块|把|双|群|匹|位|名|根|颗|朵|片|张|本|支|段|架|套|滴|幅|座|盘|所|斤|串|台|壶|瓶|杯)|看看)(?P<expr>.*?)', InstrAttr.NO_ALERT_CALLER, InstrAttr.FORECE_BACKUP)
     async def fur(self, expr: PathArg[str], author: Optional[At]):
         return await self.get_pic(expr, author)
             

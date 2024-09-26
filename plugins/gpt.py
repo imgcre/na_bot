@@ -215,7 +215,6 @@ class Gpt(Plugin):
                         logger.debug(f'[视频:上传失败,超时]')
                         return f'[视频:上传失败,超时]'
                     await asyncio.sleep(0.1)
-                    logger.debug('.', end='')
                     file = genai.get_file(file.name)
 
                 if file.state.name == "FAILED":

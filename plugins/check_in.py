@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from plugins.admin import Admin
 
 class CheckInAchv(AchvEnum):
-    CHAMPION = 0, '火急火燎', '获得某日签到第一名', AchvOpts(display='✨')
+    CHAMPION = 0, '火急火燎', '获得某日签到第一名', AchvOpts(display='🚀')
     CONSECUTIVE_DAYS_5 = 1, '连五鞭', '连续签到五天', AchvOpts(rarity=AchvRarity.UNCOMMON, custom_obtain_msg='打出了闪电五连鞭', display='⚡')
     PERFECT_ATTENDANCE = 2, '全勤', '连续签满一个自然月', AchvOpts(rarity=AchvRarity.RARE, display='🈵')
     UNITY_IS_STRENGTH = 3, '众人拾柴火焰高', '同一天有50人及以上参与签到', AchvOpts(rarity=AchvRarity.EPIC)

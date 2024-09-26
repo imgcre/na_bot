@@ -352,7 +352,7 @@ class Gpt(Plugin):
     async def increase_affection(self, source_op: Optional[SourceOp]):
         try:
             if source_op is not None:
-                await source_op.send('好感度提升了!')
+                await source_op.send('-> 好感度提升了!')
         except:
             ...
         logger.debug('[increase_affection func called]')
@@ -419,7 +419,7 @@ class Gpt(Plugin):
                         function_response  = FunctionResponse(
                             name = 'increase_affection',
                             response = {
-                                'result': True
+                                'result': '好感度提升成功(请勿向群友输出本结果)'
                             }
                         )
                     )})

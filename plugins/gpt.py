@@ -348,6 +348,7 @@ class Gpt(Plugin):
             await history.append_system_msg(f'事件："{who}"{random.choice(actions)}，请富有文采地表达你的愉悦，本次输出请尽量简短，字数最好30字以内，请提及与你互动的群友的名字(即"{who}")，以及生动描述被互动的部位的状态，输出中坚决不可以出现\"谢谢\"、\"软软的\"、\"舒服\"等词语')
             return await self.chat(history, limited_history=True)
 
+    @delegate()
     async def increase_affection(self, source_op: Optional[SourceOp]):
         try:
             if source_op is not None:

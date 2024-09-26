@@ -6,17 +6,17 @@ import time
 import traceback
 import typing
 import config
-from plugin import Inject, Plugin, any_instr, autorun, delegate, enable_backup, InstrAttr, route, top_instr
+from plugin import Context, Inject, Plugin, any_instr, autorun, delegate, enable_backup, InstrAttr, route, top_instr
 from aiomqtt import Client
 import aiomqtt
 from mirai import At, AtAll, Image
-from mirai.models.entities import GroupMember
+from mirai.models.entities import GroupMember, Group, GroupConfigModel
 from bilibili_api import live
 import json
 
 from typing import TYPE_CHECKING, Final
 
-from utilities import AchvEnum, AchvInfo, AchvOpts, AchvRarity, GroupLocalStorage, UserSpec, get_logger
+from utilities import AchvEnum, AchvInfo, AchvOpts, AchvRarity, GroupLocalStorage, UserSpec, breakdown_chain_sync, get_logger
 
 if TYPE_CHECKING:
     from plugins.achv import Achv
@@ -125,7 +125,7 @@ class Live(Plugin):
 
     @delegate()
     async def handle_message(self, message: aiomqtt.Message):
-        logger.debug('topic', message.topic)
+        logger.debug(f'{message.topic=}')
         if message.topic.matches('/live/status/started'):
             self.is_living = True
             room = live.LiveRoom(config.BILIBILI_LIVEROOM_ID)
@@ -144,6 +144,9 @@ class Live(Plugin):
                 #         '#点歌队列',
                 #     ])
                 # ])
+                group = await self.bot.get_group(group_id)
+                async with self.override(group):
+                    await self.update_group_name_based_on_live_status()
                 await self.bot.send_group_message(group_id, ['啵啦啵啦！', AtAll()])
                 await self.bot.anno_publish(
                     group_id,
@@ -165,7 +168,10 @@ class Live(Plugin):
         if message.topic.matches('/live/status/stopped'):
             self.is_living = False
             logger.debug('结束了')
-            ...
+            for group_id in self.known_groups:
+                group = await self.bot.get_group(group_id)
+                async with self.override(group):
+                    await self.update_group_name_based_on_live_status()
         if message.topic.matches('/live/resp/+'):
             j = json.loads(message.payload)
             req_id = j['id']
@@ -360,6 +366,14 @@ class Live(Plugin):
         li = await self.get_playlist()
         lines = [f'{item["uname"]}: 《{item["music_name"]}》' for item in li]
         return '\n'.join(lines)
+
+    @delegate()
+    async def update_group_name_based_on_live_status(self, group: Group):
+        conf: GroupConfigModel = await self.bot.group_config(group.id).get()
+        name_comps = breakdown_chain_sync(conf.name, rf"【(.*?)】", lambda s, ctx: None)
+        if self.is_living:
+            name_comps = ['【配信中】', *name_comps]
+        await self.bot.group_config(group.id).set(conf.modify(name=''.join(name_comps)))
 
     @autorun
     async def conn_to_live_mqtt(self):

@@ -4,7 +4,7 @@ import random
 import re
 from typing import Final,  Optional
 from event_types import EffectiveSpeechEvent
-from mirai import At, GroupMessage, MessageEvent, Plain, get_logger
+from mirai import At, GroupMessage, MessageEvent, Plain
 from plugin import Plugin, any_instr, delegate, InstrAttr, route, enable_backup, Inject
 from mirai.models.entities import GroupMember
 
@@ -16,8 +16,6 @@ if TYPE_CHECKING:
     from plugins.events import Events
     from plugins.gpt import Gpt
     from plugins.admin import Admin
-
-logger = get_logger()
 
 class AiExtAchv(AchvEnum):
     AI_COOLDOWN = 0, 'AI冷却中', '主动和bot对话功能在冷却状态下时自动获得', AchvOpts(display_pinned=True, locked=True, hidden=True, display='🆒', display_weight=-1)

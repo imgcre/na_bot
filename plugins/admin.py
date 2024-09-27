@@ -191,7 +191,7 @@ class ReslovedCensorSpeechQual(Enum):
 class ReslovedCensorSpeechKey():
     qual: ReslovedCensorSpeechQual
     reason: str
-    args: list
+    args: list[str]
     
     @classmethod
     def from_expr(cls, expr: str):
@@ -199,7 +199,7 @@ class ReslovedCensorSpeechKey():
         return cls(
             reason=reason,
             qual=ReslovedCensorSpeechQual[remains[0].upper()] if len(remains) > 0 else ReslovedCensorSpeechQual.BASE,
-            args=remains
+            args=remains[1:]
         )
 
 @route('管理')
@@ -825,7 +825,7 @@ class Admin(Plugin):
                 if key.qual == ReslovedCensorSpeechQual.BASE and is_in_white_list:
                     continue
 
-                if key.qual == ReslovedCensorSpeechQual.AT and member.id not in (int(a) for a in key.args):
+                if key.qual == ReslovedCensorSpeechQual.AT and member.id not in (int(a) for a in key.args if a.isdecimal()):
                     continue
 
                 for w_item in words:
@@ -883,4 +883,5 @@ class Admin(Plugin):
                         await try_recall('消息中包含不明链接', '消息中包含不明链接')
                         return  
                 ...
-            except: ...
+            except: 
+                traceback.print_exc()

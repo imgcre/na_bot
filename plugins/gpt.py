@@ -418,7 +418,7 @@ class Gpt(Plugin):
                         function_response  = FunctionResponse(
                             name = 'increase_affection',
                             response = {
-                                'result': '好感度提升成功(请勿向群友输出本结果)'
+                                'result': True
                             }
                         )
                     )})
@@ -501,7 +501,12 @@ class Gpt(Plugin):
                 continue
             history.update_last_chat_tsc()
 
-            # say = say.split('\n\n')[0]
+            s = re.compile(r'```tool_outputs.*?```',re.DOTALL)
+            def repl(m: re.Match):
+                print(m)
+                return ''
+
+            say = s.sub(repl, say)
 
             async def motion_op(s, ctx):
                 if 'image-append' in ctx:

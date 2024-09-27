@@ -263,7 +263,7 @@ class Gpt(Plugin):
         if isinstance(event, MessageEvent):
             should_return = ob_mode
             who = self.member_man.get_name_from_id(member.id, await self.achv.get_raw_member_name())
-
+            affection = await self.ai_ext.get_affection()
             for m in event.message_chain:
                 if isinstance(m, Quote):
                     logger.debug('[find quote]')
@@ -271,7 +271,7 @@ class Gpt(Plugin):
                     if target is None: target = '陌生人'
                     logger.debug(f'[msgid: {event.message_chain.message_id}]')
                     logger.debug(f'[repl orginal msgid: {m.id}]')
-                    await history.append_system_msg(f'【消息id: {event.message_chain.message_id}】{who}回复{target}, "{who}"所回复的原内容的消息id是【{m.id}】，并说:')
+                    await history.append_system_msg(f'【消息id: {event.message_chain.message_id}】(好感度:${affection}){who}回复{target}, "{who}"所回复的原内容的消息id是【{m.id}】，并说:')
                     logger.debug(f'{target} <- {who}: {chain}')
                     # if m.sender_id == self.bot.qq:
                     #     should_return = False
@@ -281,11 +281,11 @@ class Gpt(Plugin):
                 if isinstance(event, GroupMessage):
                     logger.debug(f'[msgid: {event.message_chain.message_id}]')
                     if ob_mode:
-                        await history.append_system_msg(f'【消息id: {event.message_chain.message_id}】{who}在群里说:')
+                        await history.append_system_msg(f'【消息id: {event.message_chain.message_id}】(好感度:${affection}){who}在群里说:')
                     else:
-                        await history.append_system_msg(f'【消息id: {event.message_chain.message_id}】(本条消息如果缺乏主语，那么就是群友在直接和你对话){who}在群里对你说:')
+                        await history.append_system_msg(f'【消息id: {event.message_chain.message_id}】(好感度:${affection})(本条消息如果缺乏主语，那么就是群友在直接和你对话){who}在群里对你说:')
                 else:
-                    await history.append_system_msg(f'{who}私下和你说:')
+                    await history.append_system_msg(f'(好感度:${affection}){who}私下和你说:')
                 logger.debug(f'bot <- {who}: {chain}')
 
 
@@ -347,16 +347,6 @@ class Gpt(Plugin):
             await history.append_system_msg(f'事件："{who}"{random.choice(actions)}，请富有文采地表达你的愉悦，本次输出请尽量简短，字数最好30字以内，请提及与你互动的群友的名字(即"{who}")，以及生动描述被互动的部位的状态，输出中坚决不可以出现\"谢谢\"、\"软软的\"、\"舒服\"等词语')
             return await self.chat(history, limited_history=True)
 
-    @delegate()
-    async def increase_affection(self, source_op: Optional[SourceOp]):
-        try:
-            if source_op is not None:
-                await source_op.send('-> 好感度提升了!')
-        except:
-            ...
-        logger.debug('[increase_affection func called]')
-        ...
-
     async def create_talk(self, history: 'History', *, limited_history=False):
         def mapper(msg):
             return {
@@ -405,6 +395,17 @@ class Gpt(Plugin):
                              },
                              'required': ['val']
                         }
+                    },
+                    {
+                        'name': 'decrease_affection',
+                        'description': '降低bot对当前群友的好感度',
+                        'parameters': {
+                            'type_': 'OBJECT',
+                            'properties': {
+                                'val': {'type_': 'NUMBER'},
+                             },
+                             'required': ['val']
+                        }
                     }
                 ])]
             ))
@@ -413,10 +414,25 @@ class Gpt(Plugin):
             if 'function_call' in resp.candidates[0].content.parts[0]:
                 function_call = resp.candidates[0].content.parts[0].function_call
                 if function_call.name == 'increase_affection':
-                    await self.increase_affection()
+                    try:
+                        await self.ai_ext.increase_affection()
+                    except: ...
                     await history.append({"role": "system", "content": Part(
                         function_response  = FunctionResponse(
                             name = 'increase_affection',
+                            response = {
+                                'result': True
+                            }
+                        )
+                    )})
+                    continue
+                if function_call.name == 'decrease_affection':
+                    try:
+                        await self.ai_ext.decrease_affection()
+                    except: ...
+                    await history.append({"role": "system", "content": Part(
+                        function_response  = FunctionResponse(
+                            name = 'decrease_affection',
                             response = {
                                 'result': True
                             }
@@ -787,9 +803,11 @@ class History(ABC):
     async def _get_raw_banner(self) -> str:
         obtained_achvs = None
         current_member_name = None
+        affection = None
         try: 
             current_member_name = await self.ctx.outer.get_current_member_name()
             obtained_achvs = await self.ctx.outer.achv.get_obtained()
+            affection = await self.ctx.outer.ai_ext.get_affection()
         except: ...
         
         return (
@@ -803,7 +821,8 @@ class History(ABC):
                     all_achvs=self.ctx.outer.achv.get_registed_achvs(),
                     obtained_achvs=obtained_achvs,
                     current_member_name=current_member_name,
-                    festival_countdowns=self.ctx.outer.festival.get_countdowns()
+                    festival_countdowns=self.ctx.outer.festival.get_countdowns(),
+                    affection=affection
                 )
         )
 

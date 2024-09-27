@@ -1,9 +1,10 @@
 import asyncio
+from dataclasses import dataclass
 import random
 import re
 from typing import Final,  Optional
 from event_types import EffectiveSpeechEvent
-from mirai import GroupMessage
+from mirai import At, GroupMessage, MessageEvent, Plain, get_logger
 from plugin import Plugin, any_instr, delegate, InstrAttr, route, enable_backup, Inject
 from mirai.models.entities import GroupMember
 
@@ -16,14 +17,21 @@ if TYPE_CHECKING:
     from plugins.gpt import Gpt
     from plugins.admin import Admin
 
+logger = get_logger()
+
 class AiExtAchv(AchvEnum):
     AI_COOLDOWN = 0, 'AI冷却中', '主动和bot对话功能在冷却状态下时自动获得', AchvOpts(display_pinned=True, locked=True, hidden=True, display='🆒', display_weight=-1)
     EDGE = 1, '边缘', '在AI的CD只有一分钟时发起对话获得', AchvOpts(rarity=AchvRarity.UNCOMMON, display='⌛', custom_obtain_msg='差点就……')
+
+@dataclass
+class CustomMan():
+    affection: int = 50
 
 @route('AI拓展')
 @enable_backup
 class AiExt(Plugin):
     gls_throttle: GroupLocalStorage[ThrottleMan] = GroupLocalStorage[ThrottleMan]()
+    gls_custom: GroupLocalStorage[CustomMan] = GroupLocalStorage[CustomMan]()
 
     achv: Inject['Achv']
     events: Inject['Events']
@@ -196,4 +204,28 @@ class AiExt(Plugin):
             if await self.check_avaliable():
                 await self.achv.remove(AiExtAchv.AI_COOLDOWN, force=True)
         except: ...
+
+    @delegate()
+    async def get_affection(self, man: CustomMan):
+        return man.affection
+
+    @delegate()
+    async def increase_affection(self, man: CustomMan):
+        await self.set_affection(val=man.affection + 1, text='提升')
     
+    @delegate()
+    async def decrease_affection(self, man: CustomMan):
+        await self.set_affection(val=man.affection - 1, text='降低')
+
+    @delegate()
+    async def set_affection(self, source_op: Optional[SourceOp], event: MessageEvent, man: CustomMan, *, val: int, text: str):
+        for c in event.message_chain:
+            if isinstance(c, Plain):
+                if '好感' in c.text:
+                    return
+        try:
+            if source_op is not None:
+                man.affection = val
+                self.backup_man.set_dirty()
+                await source_op.send(['对', At(target=source_op.member.id), f' 的好感度${text}了!'])
+        except: ...

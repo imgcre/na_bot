@@ -20,10 +20,10 @@ from mirai import At, AtAll, Face, GroupMessage, Image, MessageChain, MessageEve
 from mirai.models.entities import GroupMember, MemberInfoModel, Group
 from plugin import Context, Inject, InstrAttr, MessageContext, PathArg, Plugin, any_instr, autorun, delegate, enable_backup, join_req_instr, joined_instr, recall_instr, route, top_instr
 from utilities import AchvEnum, AchvOpts, AchvRarity, AdminType, GroupLocalStorage, GroupOp, GroupSpec, RewardEnum, Upgraded, get_logger, handler
-from mirai.models.events import GroupRecallEvent, NudgeEvent, MemberJoinRequestEvent
+from mirai.models.events import GroupRecallEvent, MemberJoinRequestEvent
 import traceback
 from mirai.models.api import RespOperate
-from mirai.models.message import App, MusicShare, Quote, MarketFace, Source
+from mirai.models.message import App, MusicShare, Quote, MarketFace, Source, Forward, ForwardMessageNode
 import cn2an
 
 import pyzbar.pyzbar
@@ -180,8 +180,22 @@ class EffectiveSpeechMan():
 
     def count_after_ts(self, ts: int):
         return len([r for r in self.records if r.created_ts >= ts])
-        ...
 
+@dataclass
+class HistoryItem():
+    member: GroupMember
+    message_chain: MessageChain
+
+@dataclass
+class MessageHistoryMan():
+    history: list[HistoryItem] = field(default_factory=list)
+    MAX_HISTORY_LEN: Final = 100
+
+    def append(self, item: HistoryItem):
+        self.history.append(item)
+        if len(self.history) >= self.MAX_HISTORY_LEN:
+            self.history.pop(0)
+    
 class ReslovedCensorSpeechQual(Enum):
     BASE = auto()
     ALL = auto()
@@ -210,6 +224,7 @@ class Admin(Plugin):
     gls_violation: GroupLocalStorage[ViolationMan] = GroupLocalStorage[ViolationMan]()
     gls_effective_speech: GroupLocalStorage[EffectiveSpeechMan] = GroupLocalStorage[EffectiveSpeechMan]()
     gspec_mam: GroupSpec[MemberAssociateMan] = GroupSpec[MemberAssociateMan]()
+    gspec_message_history_man: GroupSpec[MessageHistoryMan] = GroupSpec[MessageHistoryMan]()
     last_auto_clean_all_violation_cnt_ts: int = 0
     events: Inject['Events']
     achv: Inject['Achv']
@@ -221,8 +236,8 @@ class Admin(Plugin):
 
     def __init__(self) -> None:
         self.gspec = GroupSpec[BrushHistory]()
-        
         self.recall_by_bot_msgs = set()
+        self.custom_recall_resons: dict[int, str] = {}
 
     @join_req_instr()
     async def auto_join(self, event: MemberJoinRequestEvent):
@@ -267,7 +282,11 @@ class Admin(Plugin):
 
         # if event.operator.id == self.bot.qq: return
         logger.debug(f'{event.author_id=}, {event.operator.id=}, {event.message_id=}')
-        await self.inc_violation_cnt(reason='被撤回消息', hint='被管理员撤回消息')
+        reason = '被管理员撤回消息'
+        if event.message_id in self.custom_recall_resons:
+            reason = self.custom_recall_resons[event.message_id]
+            self.custom_recall_resons.pop(event.message_id)
+        await self.inc_violation_cnt(reason=reason, hint=reason)
 
     @top_instr('.*?犯(?P<cnt>.+?)次错.*?')
     async def make_mistakes_multi(self, cnt: PathArg[str]):
@@ -507,16 +526,41 @@ class Admin(Plugin):
         return man.get_associated(member_id)
 
     @top_instr('撤回')
-    async def recall_cmd(self, event: MessageEvent):
-        if isinstance(event, GroupMessage):
-            async with self.privilege():
-                if isinstance(event, GroupMessage):
-                    for c in event.message_chain:
-                        if isinstance(c, Quote):
-                            await self.bot.recall(c.id, event.group.id)
-                            return
-                    else:
-                        return '未选择目标消息'
+    async def recall_cmd(self, group: Group, quote: Optional[Quote], m_id: Optional[int], custom_reason: Optional[str]):
+        async with self.privilege():
+            for _ in range(1):
+                if quote is not None:
+                    m_id = quote.id
+                    break
+                if m_id is not None:
+                    break
+            else:
+                return '未选择目标消息'
+            
+            await self.bot.recall(m_id, group.id)
+            if custom_reason is not None:
+                self.custom_recall_resons[m_id] = custom_reason
+
+    @any_instr(InstrAttr.FORECE_BACKUP)
+    async def record_msg_history(self, event: GroupMessage, member: GroupMember, man: MessageHistoryMan):
+        man.append(
+            HistoryItem(
+                member=member,
+                message_chain=MessageChain([f'【{event.message_chain.message_id}】', *event.message_chain[1:]])
+            )
+        )
+
+    @top_instr('消息记录')
+    async def msg_history_cmd(self, man: MessageHistoryMan):
+        async with self.privilege():
+            return [
+                Forward(node_list=[
+                    ForwardMessageNode.create(
+                        item.member, 
+                        [c for c in item.message_chain[:] if isinstance(c, (Plain, Image, Face, MarketFace))]
+                    ) for item in man.history
+                ])
+            ]
 
     # @top_instr('取消禁言')
     # @admin

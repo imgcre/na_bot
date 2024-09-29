@@ -170,12 +170,12 @@ class CheckIn(Plugin, AchvCustomizer):
         async with self.admin.privilege(type=AdminType.SUPER):
             man.checkin_ts = [ts for ts in man.checkin_ts if ts < man.get_start_ts_of_today()]
         
-    # @admin
-    # @top_instr('帮群友补签', InstrAttr.NO_ALERT_CALLER, InstrAttr.FORECE_BACKUP)
-    # async def re_check_in_to_cmd(self, at: At, year: int, month: int, day: int):
-    #     member = await self.member_from(at=at)
-    #     async with self.override(member):
-    #         return await self.re_check_in(year=year, month=month, day=day)
+    @top_instr('帮群友补签', InstrAttr.NO_ALERT_CALLER, InstrAttr.FORECE_BACKUP)
+    async def re_check_in_to_cmd(self, at: At, year: int, month: int, day: int):
+        async with self.admin.privilege(type=AdminType.SUPER):
+            member = await self.member_from(at=at)
+            async with self.override(member):
+                return await self.re_check_in(year=year, month=month, day=day)
     
     @delegate()
     async def re_check_in(self, man: CheckInMan, member: GroupMember, *, year: int, month: int, day: int):

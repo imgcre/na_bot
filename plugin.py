@@ -780,13 +780,13 @@ class Context(ResolverMixer):
                             raise ExecFailedError(f'枚举值无效, 可选: {", ".join(values)}')
                         args.append(anno(curr_arg))
                         return
-                    # if anno is At and type(curr_arg) is str:
-                    #     try:
-                    #         m_id = int(curr_arg)
-                    #     except:
-                    #         raise ExecFailedError(f'AT的目标id格式错误')
-                    #     args.append(At(target=m_id, display=''))
-                    #     return
+                    if anno is At and isinstance(curr_arg, (Plain, str)):
+                        try:
+                            m_id = int(self.get_text(curr_arg))
+                        except:
+                            raise ExecFailedError(f'AT的目标id格式错误')
+                        args.append(At(target=m_id))
+                        return
                     if anno is MessageComponent:
                         args.append(curr_arg)
                         return

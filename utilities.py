@@ -3,9 +3,11 @@ from datetime import datetime
 from enum import Enum, auto
 import inspect
 import logging
+import logging.handlers
+import os
 import re
 import time
-from typing import Any, Callable, Dict, Generic, Iterable, Optional, Type, TypeVar, Union, get_args
+from typing import Any, Callable, Dict, Final, Generic, Iterable, Optional, Type, TypeVar, Union, get_args
 from dataclasses import Field, dataclass, field
 from abc import ABC, abstractmethod
 import typing
@@ -16,6 +18,8 @@ import ast
 
 if typing.TYPE_CHECKING:
     from plugin import Context, Plugin
+
+LOGS_PATH: Final[str] = './logs'
 
 T = TypeVar('T')
 
@@ -672,8 +676,22 @@ def get_logger():
 
     ch = logging.StreamHandler()
     # ch.setLevel(logging.DEBUG)
-
     ch.setFormatter(CustomFormatter())
-
     logger.addHandler(ch)
+
+    file_handler = logging.handlers.RotatingFileHandler(
+        filename=os.path.join(LOGS_PATH, '.log'),
+        maxBytes=1 * 1024 * 1024,
+        encoding='utf-8'
+    )
+    def namer(name: str):
+        tempName = name.split('.')
+        timestamp = datetime.now().strftime('%Y%b%d_%H%M%S')
+        tempName.insert(1, timestamp)[:-2]
+        name = '_'.join(tempName)
+        return name
+    file_handler.namer = namer
+    file_handler.setFormatter(CustomFormatter())
+    logger.addHandler(file_handler)
+
     return logger

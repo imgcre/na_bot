@@ -168,3 +168,4 @@ cython_debug/
 backups*/
 plugins/*/
 /config.py
+logs/

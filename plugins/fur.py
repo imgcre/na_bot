@@ -24,7 +24,7 @@ import json
 import itertools
 import re
 from enum import Enum, auto
-from mirai.models.entities import Group
+from mirai.models.entities import Group, GroupMember
 import pathlib
 
 from typing import TYPE_CHECKING
@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from plugins.bili import Bili
     from plugins.known_groups import KnownGroups
     from plugins.admin import Admin
+    from plugins.voucher import Voucher
 
 logger = get_logger()
 
@@ -123,6 +124,7 @@ class Fur(Plugin):
     renderer: Inject['Renderer']
     achv: Inject['Achv']
     admin: Inject['Admin']
+    voucher: Inject['Voucher']
 
     FETCH_AUTHOR_HISTORY_SIZE: Final = 10
     FETCH_IMG_PATH_HISTORY_SIZE: Final = 50
@@ -315,6 +317,8 @@ class Fur(Plugin):
     @unmute_instr(InstrAttr.FORECE_BACKUP)
     async def clear_mute_state(self, man: MuteMan):
         man.clear()
+        await self.voucher.consume(cnt=1, force=True)
+        return ['消耗了一张兑奖券, 解除了禁言状态']
 
     @delegate(InstrAttr.FORECE_BACKUP)
     async def get_pic(self, expr: str, author: Optional[At], group: Group, mute_logic: MuteLogic, glse_gls_mute_man_: gls_mute_man.event_t(), throttle_man: ThrottleMan, msg_op: Optional[MsgOp], member_op: GroupMemberOp, source_op: SourceOp, fur_pic_msg_man: FurPicMsgMan, *, mute_targets: set[int]=None, factor: int=1, reset_cd: bool=True):

@@ -562,11 +562,10 @@ class Admin(Plugin):
                 ])
             ]
 
-    # @top_instr('取消禁言')
-    # @admin
-    # async def unmute_target(self, group_id: int, member_id: int):
-    #     await self.bot.unmute(group_id, member_id)
-        ...
+    @top_instr('取消禁言')
+    async def unmute_target(self, group: Group, at: At):
+        async with self.privilege(type=AdminType.SUPER):
+            await self.bot.unmute(group.id, at.target)
 
     # @top_instr('清(除|空)功德', InstrAttr.NO_ALERT_CALLER)
     # @admin

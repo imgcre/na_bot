@@ -44,9 +44,6 @@ class UserVoucherMan(Upgraded):
             self.count += 1
 
     def append_consume(self, cnt: int):
-        if not self.is_satisfied(cnt):
-            raise RuntimeError('兑奖券不足')
-        
         while True:
             n_float = random.random()
             same_id_item = next((r.id for r in self.consumes if r.id == n_float), None)
@@ -108,8 +105,8 @@ class Voucher(Plugin):
         return man.is_satisfied(cnt)
     
     @delegate(InstrAttr.FORECE_BACKUP)
-    async def consume(self, user: User, *, cnt: int):
-        if not await self.is_satisfied(cnt=cnt):
+    async def consume(self, user: User, *, cnt: int, force: bool=False):
+        if not force and not await self.is_satisfied(cnt=cnt):
             raise RuntimeError('兑奖券不足')
         
         man = self.user_sweepstakes.get_or_create_data(user.id)

@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 class MeowAchv(AchvEnum):
     CACTUS = 0, '仙人球', '累计发送10000条消息', AchvOpts(rarity=AchvRarity.LEGEND, custom_obtain_msg='发大水了', target_obtained_cnt=10000, display='🌵', unit='条有效发言')
-    FULL_LEVEL = 1, '一百昏', '群等级达到100级', AchvOpts(rarity=AchvRarity.LEGEND, custom_obtain_msg='满级了', display='💯', locked=True, dynamic_deletable=True)
+    FULL_LEVEL = 1, '一百昏', '群等级达到100级', AchvOpts(rarity=AchvRarity.LEGEND, custom_obtain_msg='满级了', display='💯', dynamic_deletable=True)
 
 # 10000 -> rare
 

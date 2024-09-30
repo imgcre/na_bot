@@ -2,7 +2,7 @@ from event_types import EffectiveSpeechEvent
 from mirai import GroupMessage, MessageEvent, Voice, Plain
 from mirai.models.entities import GroupMember, MemberInfoModel
 
-from plugin import Inject, Plugin, fall_instr, top_instr, any_instr, InstrAttr, route
+from plugin import AchvCustomizer, Inject, Plugin, delegate, fall_instr, top_instr, any_instr, InstrAttr, route
 import random
 import os
 from graiax import silkcoder
@@ -16,12 +16,12 @@ if TYPE_CHECKING:
 
 class MeowAchv(AchvEnum):
     CACTUS = 0, '仙人球', '累计发送10000条消息', AchvOpts(rarity=AchvRarity.LEGEND, custom_obtain_msg='发大水了', target_obtained_cnt=10000, display='🌵', unit='条有效发言')
-    FULL_LEVEL = 1, '一百昏', '群等级达到100级', AchvOpts(rarity=AchvRarity.LEGEND, custom_obtain_msg='满级了', display='💯', locked=True)
+    FULL_LEVEL = 1, '一百昏', '群等级达到100级', AchvOpts(rarity=AchvRarity.LEGEND, custom_obtain_msg='满级了', display='💯', locked=True, dynamic_deletable=True)
 
 # 10000 -> rare
 
 @route('猫叫')
-class Meow(Plugin):
+class Meow(Plugin, AchvCustomizer):
     achv: Inject['Achv']
     events: Inject['Events']
     
@@ -51,6 +51,13 @@ class Meow(Plugin):
         info: MemberInfoModel = await self.bot.member_info(member.group.id, member.id).get()
         if info.active.temperature == 100:
             await self.achv.submit(MeowAchv.FULL_LEVEL)
+
+    @delegate()
+    async def is_achv_deletable(self, e: AchvEnum, member: GroupMember):
+        info: MemberInfoModel = await self.bot.member_info(member.group.id, member.id).get()
+        if e is MeowAchv.FULL_LEVEL:
+            return info.active.temperature != 100
+        return False
 
     @fall_instr()
     async def falled(self, event: GroupMessage):

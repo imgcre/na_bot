@@ -10,6 +10,7 @@ from utilities import AchvEnum, AchvOpts, get_logger
 if TYPE_CHECKING:
     from plugins.known_groups import KnownGroups
     from plugins.achv import Achv
+    from plugins.admin import Admin
 
 logger = get_logger()
 
@@ -22,6 +23,7 @@ class AutoPurgeAchv(AchvEnum):
 class AutoPurge(Plugin):
     known_groups: Inject['KnownGroups']
     achv: Inject['Achv']
+    admin: Inject['Admin']
 
     INACTIVE_NOTIFICATION_DAYS_THRESHOLD: Final = 7
     INACTIVE_REMOVE_DAYS_THRESHOLD: Final = 3
@@ -57,6 +59,8 @@ class AutoPurge(Plugin):
                                     # TODO: 超过三天, 移除群聊, 顺便删除INACTIVE_MARK
                                     obtained_ts = await self.achv.get_achv_obtained_ts(AutoPurgeAchv.INACTIVE_MARK)
                                     if time.time() - obtained_ts > 60 * 60 * 24 * self.INACTIVE_REMOVE_DAYS_THRESHOLD:
+                                        name = await self.achv.get_raw_member_name()
+                                        await self.admin.boardcast_to_admins(mc=[f'自动清理了潜水成员"{name}"({member.id})'])
                                         await self.bot.kick(group_id, member.id, '自动清理潜水群员, 误踢请重新加回')
                                         await self.achv.remove(AutoPurgeAchv.INACTIVE_MARK, force=True)
                                 else:

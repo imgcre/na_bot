@@ -104,11 +104,12 @@ class Voucher(Plugin):
             return False
         return man.is_satisfied(cnt)
     
-    @delegate(InstrAttr.FORECE_BACKUP)
+    @delegate()
     async def consume(self, user: User, *, cnt: int, force: bool=False):
         if not force and not await self.is_satisfied(cnt=cnt):
             raise RuntimeError('兑奖券不足')
         
+        self.backup_man.set_dirty()
         man = self.user_sweepstakes.get_or_create_data(user.id)
         return man.append_consume(cnt)
 

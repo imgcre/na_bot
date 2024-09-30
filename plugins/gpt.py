@@ -517,7 +517,7 @@ class Gpt(Plugin):
                 continue
             history.update_last_chat_tsc()
 
-            s = re.compile(r'```tool_outputs.*?```',re.DOTALL)
+            s = re.compile(r'```.*?```',re.DOTALL)
             def repl(m: re.Match):
                 print(m)
                 return ''

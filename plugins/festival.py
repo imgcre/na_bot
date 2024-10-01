@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from mirai import MessageEvent, Plain
 from plugin import AchvCustomizer, Inject, InstrAttr, Plugin, any_instr, delegate, route, top_instr
 from utilities import AchvEnum, AchvOpts, AchvRarity, GroupMemberOp
@@ -34,6 +34,12 @@ class FestivalItem():
     festival: Fes
     trigger_regex: str
     associated_achv: FestivalAchv
+    duration_days: int = 1
+
+    def is_available(self):
+        offset_date = date.today() - timedelta(days=self.duration_days-1)
+        days, _ = self.festival.countdown(offset_date)
+        return days < self.duration_days
 
 @route('节日')
 class Festival(Plugin, AchvCustomizer):
@@ -50,7 +56,8 @@ class Festival(Plugin, AchvCustomizer):
             FestivalItem(
                 festival=self.library.get_festival('国庆节'),
                 trigger_regex='国庆.*?快乐',
-                associated_achv=FestivalAchv.NATIONAL_DAY
+                associated_achv=FestivalAchv.NATIONAL_DAY,
+                duration_days=7
             ),
             FestivalItem(
                 festival=FursuitFriday(), 
@@ -60,7 +67,8 @@ class Festival(Plugin, AchvCustomizer):
             FestivalItem(
                 festival=self.library.get_festival('春节'),
                 trigger_regex='新年.*?快乐',
-                associated_achv=FestivalAchv.SPRING_FESTIVAL
+                associated_achv=FestivalAchv.SPRING_FESTIVAL,
+                duration_days=15
             ),
             FestivalItem(
                 festival=self.library.get_festival('圣诞节'),
@@ -73,8 +81,7 @@ class Festival(Plugin, AchvCustomizer):
     @any_instr(InstrAttr.NO_ALERT_CALLER)
     async def festival_achv(self, event: MessageEvent, op: GroupMemberOp):
         for item in self.festivals:
-            days, _ = item.festival.countdown()
-            if days == 0:
+            if item.is_available():
                 if not await self.achv.has(item.associated_achv):
                     for c in event.message_chain:
                         if isinstance(c, Plain) and re.search(item.trigger_regex, c.text) is not None:
@@ -88,8 +95,7 @@ class Festival(Plugin, AchvCustomizer):
     async def is_achv_deletable(self, e: AchvEnum):
         for item in self.festivals:
             if item.associated_achv is e:
-                days, _ = item.festival.countdown()
-                return days != 0
+                return not item.is_available()
         return False
 
     def get_countdowns(self):

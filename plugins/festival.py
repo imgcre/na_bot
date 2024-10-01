@@ -18,9 +18,10 @@ class FestivalAchv(AchvEnum):
     CHRISTMAS = 4, '圣诞树', '在圣诞节当天发送"圣诞快乐"', AchvOpts(rarity=AchvRarity.RARE, display='🎄', dynamic_deletable=True)
 
 class FursuitFriday():
-    def countdown(self):
-        today = datetime.now()
-        days_ahead = 4 - today.weekday()  # 4代表周五
+    def countdown(self, date_obj: date = None):
+        if date_obj is None:
+            date_obj = date.today()
+        days_ahead = 4 - date_obj.weekday()  # 4代表周五
         if days_ahead < 0:  # 如果今天是周五，返回7天后
             days_ahead += 7
         return days_ahead, None

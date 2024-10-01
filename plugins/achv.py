@@ -317,31 +317,30 @@ class Achv(Plugin, InjectNotifier):
             async with self.override(member):
                 await self.submit(e)
 
-    # @admin
-    # @top_instr('撤销')
-    # async def remove_cmd(self, at: At, aka: str, force_arg: Optional[str]):
-        
-    #     for meta in self.registed_achv.values():
-    #         e = next((e for e in meta if typing.cast(AchvInfo, e.value).aka == aka), None)
-    #         if e is not None:
-    #             break
-    #     else:
-    #         return f'不存在名叫"{aka}"的成就'
-        
-    #     force = force_arg == '强制'
+    @top_instr('撤销')
+    async def remove_cmd(self, at: At, aka: str, force_arg: Optional[str]):
+        async with self.admin.privilege(type=AdminType.SUPER):
+            for meta in self.registed_achv.values():
+                e = next((e for e in meta if typing.cast(AchvInfo, e.value).aka == aka), None)
+                if e is not None:
+                    break
+            else:
+                return f'不存在名叫"{aka}"的成就'
+            
+            force = force_arg == '强制'
 
-    #     member = await self.member_from(at=at)
-    #     async with self.override(member):
-    #         result = await self.remove(e, force=force)
+            member = await self.member_from(at=at)
+            async with self.override(member):
+                result = await self.remove(e, force=force)
 
-    #     if result is None:
-    #         return '撤销失败, 未获得成就进度'
-        
-    #     if result:
-    #         return f'为{at.display}撤销了{aka}...'
-        
-    #     if not result:
-    #         return f'为{at.display}清空了{aka}的进度...'
+                if result is None:
+                    return '撤销失败, 未获得成就进度'
+                
+                if result:
+                    return [f'为', at, f' 撤销了{aka}...']
+                
+                if not result:
+                    return [f'为', at, f' 清空了{aka}的进度...']
 
     
 

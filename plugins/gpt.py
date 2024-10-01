@@ -523,6 +523,7 @@ class Gpt(Plugin):
                 return ''
 
             say = s.sub(repl, say)
+            say = say.replace('```', '')
 
             async def motion_op(s, ctx):
                 if 'image-append' in ctx:

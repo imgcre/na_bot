@@ -511,7 +511,14 @@ class SourceOp():
             return await self.bot.send_group_message(self.get_group_id(), msg)
         
         if to == Target.TEMP:
-            return await self.bot.send_temp_message(self.get_member_id(), self.get_group_id(), msg)
+            async def map_at(c):
+                if isinstance(c, At):
+                    at_member = await self.bot.get_group_member(self.get_group_id(), c.target)
+                    return f'@{at_member.get_name()}({c.target})'
+                return c
+            
+            at_mapped = [await map_at(c) for c in msg]
+            return await self.bot.send_temp_message(self.get_member_id(), self.get_group_id(), at_mapped)
     
 
 @dataclass

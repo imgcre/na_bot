@@ -799,7 +799,7 @@ class Admin(Plugin):
         with open(self.path.data.of_file('forbidden_market_face.json'), encoding='utf-8') as f:
             forbidden_market_face_o: dict[str, int] = json.load(f)
 
-        url_regex = r'(https?:\/\/)?((([0-9a-z]+\.)+[a-z]+)|(([0-9]{1,3}\.){3}[0-9]{1,3}))(:[0-9]+)?(\/[0-9a-z%/.\-_]*)?(\?[0-9a-z=&%_\-]*)?(\#[0-9a-z=&%_\-]*)?'
+        url_regex = r'(https?:\/\/)((([0-9a-z]+\.)+[a-z]+)|(([0-9]{1,3}\.){3}[0-9]{1,3}))(:[0-9]+)?(\/[0-9a-z%/.\-_]*)?(\?[0-9a-z=&%_\-]*)?(\#[0-9a-z=&%_\-]*)?'
         url_pattern  = re.compile(url_regex)
 
         async def try_recall(reason: Union[str, list], hint: str):

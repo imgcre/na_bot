@@ -277,6 +277,7 @@ class Live(Plugin):
     @top_instr('绑定账号', InstrAttr.FORECE_BACKUP)
     async def bind_account(self, info: UserBindInfo, member: GroupMember):
         if info.is_bound(): return '已完成绑定, 无需重复操作'
+        if not self.is_living and member.id not in config.SUPER_ADMINS: return '当前未开播'
 
         confirm_code = info.start_bind(from_group_id=member.group.id)
         await self.bot.send_temp_message(member.id, member.group.id, [

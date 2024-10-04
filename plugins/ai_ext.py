@@ -38,7 +38,7 @@ class AiExt(Plugin):
     
 
     MAX_COOLDOWN_DURATION: Final = 6 * 60 * 60
-    MIN_COOLDOWN_DURATION: Final = 10 * 60
+    MIN_COOLDOWN_DURATION: Final = 5 * 60
 
     # 单位是秒
     SPEEDUP_LOOKUP: Final = {
@@ -74,10 +74,10 @@ class AiExt(Plugin):
         from plugins.admin import AdminAchv
         from plugins.live import LiveAchv
         
-        # print('[check_avaliable]')
+        use_min_duration = False
         for e in (AdminAchv.ADMIN, LiveAchv.CAPTAIN):
             if await self.achv.is_used(e):
-                return True
+                use_min_duration = True
 
         # print('[check_achvs]')
         # 需要至少一个稀有成就
@@ -102,16 +102,18 @@ class AiExt(Plugin):
         # print(f'{speedup=}, {man.get_effective_speech_cnt()=}')
         speedup += self.SPEEDUP_EFFECTIVE_SPEECH * man.get_effective_speech_cnt()
         
-        cooldown_duration = max(self.MIN_COOLDOWN_DURATION, self.MAX_COOLDOWN_DURATION - speedup)
+        cooldown_duration = self.MAX_COOLDOWN_DURATION - speedup
+        if cooldown_duration < self.MIN_COOLDOWN_DURATION or use_min_duration:
+            cooldown_duration = self.MIN_COOLDOWN_DURATION
 
         cooldown_reamins = man.get_cooldown_remains(cooldown_duration)
 
         # print(f'[check_cooldown_reamins], {cooldown_reamins=}, {cooldown_duration=}, {speedup=}')
         if cooldown_reamins > 0:
-            if cooldown_reamins < 60:
-                await self.achv.submit(AiExtAchv.EDGE)
             print(f'{msg_op=}, {recall=}')
             if msg_op is not None and recall:
+                if cooldown_reamins < 60 and not use_min_duration:
+                    await self.achv.submit(AiExtAchv.EDGE)
                 await member_op.send_temp([
                     f'AI功能冷却中, 请{get_delta_time_str(cooldown_reamins, use_seconds=False)}后再试, 多多发言可以大幅减少冷却时间哦'
                 ])

@@ -797,7 +797,7 @@ class Admin(Plugin):
             censor_speech_o: dict = json.load(f)
 
         with open(self.path.data.of_file('forbidden_market_face.json'), encoding='utf-8') as f:
-            forbidden_market_face_o: dict[str, int] = json.load(f)
+            forbidden_market_face_o: dict[str, dict[str, int]] = json.load(f)
 
         url_regex = r'(https?:\/\/)((([0-9a-z]+\.)+[a-z]+)|(([0-9]{1,3}\.){3}[0-9]{1,3}))(:[0-9]+)?(\/[0-9a-z%/.\-_]*)?(\?[0-9a-z=&%_\-]*)?(\#[0-9a-z=&%_\-]*)?'
         url_pattern  = re.compile(url_regex)
@@ -821,7 +821,11 @@ class Admin(Plugin):
                     if isinstance(c, App):
                         return f'APP: {c.content}'
                     if isinstance(c, MarketFace):
-                        face_name = next((k for k, v in forbidden_market_face_o.items() if v == c.id), '未知')
+                        face_name = '未知'
+                        for faces in forbidden_market_face_o.values():
+                            for name, face_id in faces.items():
+                                if face_id == c.id:
+                                    face_name = name
                         return f'表情{{{face_name}:{c.name}}}'
                     logger.debug(f'{c=}')
                     return f'{type(c)}'
@@ -903,9 +907,10 @@ class Admin(Plugin):
                 if isinstance(c, Quote):
                     ...
                 if isinstance(c, MarketFace):
-                    if c.id in forbidden_market_face_o.values():
-                        await try_recall('涉及其他主播', '涉及其他主播')
-                        return
+                    for reason, faces in forbidden_market_face_o.items():
+                        if c.id in faces.values():
+                            await try_recall(reason, reason)
+                            return
                 if not is_in_white_list:
                     if isinstance(c, Image):
                         qrcodes = pyzbar.pyzbar.decode(await self.load_image(c))

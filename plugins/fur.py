@@ -499,7 +499,7 @@ class Fur(Plugin):
             who = '&'.join(furs)
             who_nick = '&'.join([fur.split('.')[0] for fur in furs])
 
-            if '毛线球' in furs and not await self.achv.is_used(FurAchv.NSFW):
+            if any(['毛线球' in fur for fur in furs]) and not await self.achv.is_used(FurAchv.NSFW):
                 raise RuntimeError(f'请先佩戴称号"{FurAchv.NSFW.value.opts.display}"')
 
             async def post_process():

@@ -322,7 +322,7 @@ class Fur(Plugin):
         return ['消耗了一张兑奖券, 解除了禁言状态']
 
     @delegate(InstrAttr.FORECE_BACKUP)
-    @throttle_config(name='返图', achv_speedup=False, effective_speedup=False, enable_min_duration=False)
+    @throttle_config(name='返图')
     async def get_pic(self, expr: str, author: Optional[At], group: Group, mute_logic: MuteLogic, glse_gls_mute_man_: gls_mute_man.event_t(), msg_op: Optional[MsgOp], member_op: GroupMemberOp, source_op: SourceOp, fur_pic_msg_man: FurPicMsgMan, *, mute_targets: set[int]=None, factor: int=1, reset_cd: bool=True):
         author = None
         glse_gls_mute_man = typing.cast(GroupLocalStorageAsEvent[MuteMan], glse_gls_mute_man_)
@@ -588,7 +588,7 @@ class Fur(Plugin):
                 return f'没有找到{who_nick}的返图'
             
             if '灯泡' not in who and reset_cd:
-                if not await self.throttle.do(recall=True):
+                if not await self.throttle.do():
                     return
             
             author_folder_names = [

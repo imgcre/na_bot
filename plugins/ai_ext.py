@@ -36,10 +36,6 @@ class AiExt(Plugin):
     gpt: Inject['Gpt']
     admin: Inject['Admin']
     throttle: Inject['Throttle']
-    
-
-    MAX_COOLDOWN_DURATION: Final = 6 * 60 * 60
-    MIN_COOLDOWN_DURATION: Final = 5 * 60
 
     # 单位是秒
     SPEEDUP_LOOKUP: Final = {
@@ -65,7 +61,7 @@ class AiExt(Plugin):
         if res is not None:
             await self.bot.send(event, res)
 
-    @throttle_config(name='AI')
+    @throttle_config(name='AI', achv_speedup=True, effective_speedup=True, enable_min_duration=True)
     async def check_avaliable(self, *, recall: bool=False):
         cooldown_reamins = await self.throttle.get_cooldown_reamins()
         use_min_duration = await self.throttle.is_use_min_duration()

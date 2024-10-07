@@ -567,13 +567,13 @@ class Admin(Plugin):
         async with self.privilege(type=AdminType.SUPER):
             await self.bot.unmute(group.id, at.target)
 
-    # @top_instr('清(除|空)功德', InstrAttr.NO_ALERT_CALLER)
-    # @admin
-    # async def clean_violation_cnt_cmd(self, at: At):
-    #     member = await self.member_from(at=at)
-    #     async with self.override(member):
-    #         await self.clean_violation_cnt()
-    #     return ['2已将', at, ' 的功德清零']
+    @top_instr('清(除|空)功德', InstrAttr.NO_ALERT_CALLER)
+    async def clean_violation_cnt_cmd(self, at: At):
+        async with self.privilege(type=AdminType.SUPER):
+            member = await self.member_from(at=at)
+            async with self.override(member):
+                await self.clean_violation_cnt()
+            return ['已将', at, ' 的功德清零']
 
     @top_instr('领取奖励')
     async def get_award(self, m: GroupMember, man: Optional[ViolationMan]):

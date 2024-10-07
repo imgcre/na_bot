@@ -67,6 +67,10 @@ class Throttle(Plugin):
 
         config = ensure_attr(fn, ThrottleConfig)
 
+        max_cooldown_duration = self.MAX_COOLDOWN_DURATION
+        if config.max_cooldown_duration is not None:
+            max_cooldown_duration = config.max_cooldown_duration
+
         if config.achv_speedup:
             obtained_achvs = await self.achv.get_obtained()
             grouped = self.achv.group_by_rarity(obtained_achvs)
@@ -80,14 +84,14 @@ class Throttle(Plugin):
             effective_speech_cnt = await self.achv.get_achv_collected_count(MeowAchv.CACTUS)
             speedup += self.SPEEDUP_EFFECTIVE_SPEECH * max(effective_speech_cnt - fn_info.effective_speech_cnt_snapshot, 0)
 
-        cooldown_duration = self.MAX_COOLDOWN_DURATION - speedup
+        cooldown_duration = max_cooldown_duration - speedup
         if cooldown_duration < self.MIN_COOLDOWN_DURATION or use_min_duration:
             cooldown_duration = self.MIN_COOLDOWN_DURATION
         return fn_info.created_ts + cooldown_duration - time.time()
 
     @delegate()
     async def do(self, man: ThrottleMan, member_op: GroupMemberOp, msg_op: Optional[MsgOp], 
-        *, recall: bool=False, cooldown_reamins: Optional[float]=None, fn: Callable=None
+        *, recall: bool=True, cooldown_reamins: Optional[float]=None, fn: Callable=None
     ):
         if fn is None:
             fn = self._get_caller_fn()

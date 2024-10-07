@@ -707,9 +707,10 @@ def get_logger():
 @dataclass
 class ThrottleConfig():
     name: str
-    achv_speedup: bool=True
-    effective_speedup: bool=True
-    enable_min_duration: bool=True
+    achv_speedup: bool = False
+    effective_speedup: bool = False
+    enable_min_duration: bool = False
+    max_cooldown_duration: Optional[int] = None
 
 def throttle_config(**kwarg):
     def wrapper(fn):

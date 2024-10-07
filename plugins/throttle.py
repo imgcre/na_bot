@@ -89,6 +89,14 @@ class Throttle(Plugin):
             cooldown_duration = self.MIN_COOLDOWN_DURATION
         return fn_info.created_ts + cooldown_duration - time.time()
 
+    async def __aenter__(self):
+        fn = self._get_caller_fn()
+        return await self.do(fn=fn)
+
+    async def __aexit__(self, etype, value, traceback):
+        fn = self._get_caller_fn()
+        await self.reset(fn=fn)
+
     @delegate()
     async def do(self, man: ThrottleMan, member_op: GroupMemberOp, msg_op: Optional[MsgOp], 
         *, recall: bool=True, cooldown_reamins: Optional[float]=None, fn: Callable=None

@@ -69,10 +69,9 @@ class RusRou(Plugin):
     @top_instr('猜拳', InstrAttr.NO_ALERT_CALLER, InstrAttr.FORECE_BACKUP)
     @throttle_config(name='猜拳', max_cooldown_duration=10*60)
     async def start(self, gesture: Optional[Gesture], mora_man: MoraMan, member: GroupMember):
-        if not await self.throttle.do():
-            return
-        
-        try:
+        async with self.throttle as passed:
+            if not passed: return
+
             if gesture is None:
                 gesture = random.choice([e for e in Gesture])
 
@@ -87,8 +86,3 @@ class RusRou(Plugin):
             return [
                 At(target=member.id), f' 出了{gesture.value}, bot出了{bot_gesture.value} -> {result.value}'
             ]
-        finally:
-            await self.throttle.reset()
-
-            
-

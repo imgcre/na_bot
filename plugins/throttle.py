@@ -6,7 +6,7 @@ import traceback
 from typing import Callable, TYPE_CHECKING, Final, Optional
 from plugin import Inject, InstrAttr, Plugin, delegate, enable_backup, route
 from mirai.models.entities import GroupMember
-from utilities import AchvRarity, GroupLocalStorage, GroupMemberOp, MsgOp, ThrottleConfig, ensure_attr, get_delta_time_str, is_nested, to_unbind
+from utilities import AchvRarity, GroupLocalStorage, GroupMemberOp, MsgOp, ensure_attr, get_delta_time_str, is_nested, throttle_config, to_unbind
 
 if TYPE_CHECKING:
     from plugins.achv import Achv
@@ -65,7 +65,7 @@ class Throttle(Plugin):
             
         speedup = 0
 
-        config = ensure_attr(fn, ThrottleConfig)
+        config = ensure_attr(fn, throttle_config)
 
         max_cooldown_duration = self.MAX_COOLDOWN_DURATION
         if config.max_cooldown_duration is not None:
@@ -116,7 +116,7 @@ class Throttle(Plugin):
         if cooldown_reamins <= 0:
             return True
         
-        config = ensure_attr(fn, ThrottleConfig)
+        config = ensure_attr(fn, throttle_config)
 
         try:
             if (
@@ -182,7 +182,7 @@ class Throttle(Plugin):
         else:
             fn = to_unbind(fn)
 
-        config = ensure_attr(fn, ThrottleConfig)
+        config = ensure_attr(fn, throttle_config)
 
         if not config.enable_min_duration:
             return False

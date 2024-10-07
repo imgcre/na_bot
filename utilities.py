@@ -705,19 +705,17 @@ def get_logger():
     return logger
 
 @dataclass
-class ThrottleConfig():
+class throttle_config():
     name: str
     achv_speedup: bool = False
     effective_speedup: bool = False
     enable_min_duration: bool = False
     max_cooldown_duration: Optional[int] = None
 
-def throttle_config(**kwarg):
-    def wrapper(fn):
-        attr_name = get_cls_attr_name(ThrottleConfig)
-        setattr(fn, attr_name, ThrottleConfig(**kwarg))
+    def __call__(self, fn: Callable):
+        attr_name = get_cls_attr_name(throttle_config)
+        setattr(fn, attr_name, self)
         return fn
-    return wrapper
 
 T = TypeVar('T')
 def ensure_attr(target, cls: Type[T]) -> T:

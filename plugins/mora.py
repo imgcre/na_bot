@@ -7,12 +7,13 @@ from plugin import Plugin, enable_backup, top_instr, InstrAttr, route, Inject
 import random
 import random
 from enum import Enum
-from utilities import AchvEnum, AchvOpts, AchvRarity, GroupLocalStorage
+from utilities import AchvEnum, AchvOpts, AchvRarity, GroupLocalStorage, throttle_config
 from dataclasses import dataclass, field
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from plugins.achv import Achv
+    from plugins.throttle import Throttle
 
 class MoraAchv(AchvEnum):
     FIRST_WIN = 0, '首胜', '与bot的猜拳获得首次胜利', AchvOpts(display='✌️')
@@ -63,29 +64,31 @@ class MoraMan():
 class RusRou(Plugin):
     gls: GroupLocalStorage[MoraMan] = GroupLocalStorage[MoraMan]()
     achv: Inject['Achv']
+    throttle: Inject['Throttle']
     
     @top_instr('猜拳', InstrAttr.NO_ALERT_CALLER, InstrAttr.FORECE_BACKUP)
+    @throttle_config(name='猜拳', max_cooldown_duration=10*60)
     async def start(self, gesture: Optional[Gesture], mora_man: MoraMan, member: GroupMember):
-
-        if gesture is None:
-            gesture = random.choice([e for e in Gesture])
-
-        result, bot_gesture = mora_man.play(gesture)
-
-        if result == MoraResult.PlayerWin:
-            await self.achv.submit(MoraAchv.FIRST_WIN)
+        if not await self.throttle.do():
+            return
         
-        if mora_man.consecutive_wins >= 3:
-            await self.achv.submit(MoraAchv.CONSECUTIVE_WINS_3)
+        try:
+            if gesture is None:
+                gesture = random.choice([e for e in Gesture])
 
-        return [
-            At(target=member.id), f' 出了{gesture.value}, bot出了{bot_gesture.value} -> {result.value}'
-        ]
+            result, bot_gesture = mora_man.play(gesture)
 
-        # return [
-        #     f'剪刀石头布对局, bot出了{bot_gesture.value}, 玩家出了{gesture.value}, {result.value}, 请总结对局结果(指明玩家和bot各自出的手势)'
-        # ]
+            if result == MoraResult.PlayerWin:
+                await self.achv.submit(MoraAchv.FIRST_WIN)
             
+            if mora_man.consecutive_wins >= 3:
+                await self.achv.submit(MoraAchv.CONSECUTIVE_WINS_3)
+
+            return [
+                At(target=member.id), f' 出了{gesture.value}, bot出了{bot_gesture.value} -> {result.value}'
+            ]
+        finally:
+            await self.throttle.reset()
 
             
 

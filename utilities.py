@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, Final, Generic, Iterable, Optional, Type
 from dataclasses import Field, dataclass, field
 from abc import ABC, abstractmethod
 import typing
+import inflection
 from mirai import At, GroupMessage, MessageChain, Mirai, Plain, TempMessage
 from mirai.models.entities import GroupMember, Group
 from mirai.models.events import NudgeEvent, Event
@@ -702,3 +703,40 @@ def get_logger():
     logger.addHandler(file_handler)
 
     return logger
+
+@dataclass
+class ThrottleConfig():
+    name: str
+    achv_speedup: bool=True
+    effective_speedup: bool=True
+    enable_min_duration: bool=True
+
+def throttle_config(**kwarg):
+    def wrapper(fn):
+        attr_name = get_cls_attr_name(ThrottleConfig)
+        setattr(fn, attr_name, ThrottleConfig(**kwarg))
+        return fn
+    return wrapper
+
+T = TypeVar('T')
+def ensure_attr(target, cls: Type[T]) -> T:
+    attr_name = get_cls_attr_name(cls)
+    return create_or_get_attr(target, attr_name, cls)
+
+T = TypeVar('T')
+def guard_attr(target, cls: Type[T]) -> bool:
+    attr_name = get_cls_attr_name(cls)
+    return hasattr(target, attr_name)
+
+def get_cls_attr_name(cls):
+    return f'__{inflection.underscore(cls.__name__).upper()}__'
+
+def create_or_get_attr(target, attr_name, factory):
+    if not hasattr(target, attr_name):
+        setattr(target, attr_name, factory())
+    return getattr(target, attr_name)
+
+def to_unbind(fn):
+    if hasattr(fn, '__func__'):
+        return fn.__func__
+    return fn

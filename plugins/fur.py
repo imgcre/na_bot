@@ -15,7 +15,7 @@ from bilibili_api import topic, dynamic
 import os
 import random
 from PIL import Image, ExifTags, TiffImagePlugin
-from utilities import AchvEnum, AchvInfo, AchvOpts, AchvRarity, AchvRarityVal, GroupLocalStorage, GroupLocalStorageAsEvent, GroupMemberOp, GroupSpec, MsgOp, SourceOp, ThrottleMan, Upgraded, get_delta_time_str, get_logger
+from utilities import AchvEnum, AchvInfo, AchvOpts, AchvRarity, AchvRarityVal, GroupLocalStorage, GroupLocalStorageAsEvent, GroupMemberOp, GroupSpec, MsgOp, SourceOp, Upgraded, get_delta_time_str, get_logger, throttle_config
 import uuid
 import aiohttp
 import base64
@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from plugins.known_groups import KnownGroups
     from plugins.admin import Admin
     from plugins.voucher import Voucher
+    from plugins.throttle import Throttle
 
 logger = get_logger()
 
@@ -117,7 +118,6 @@ class Fur(Plugin):
     gs_mute_logic: GroupSpec[MuteLogic] = GroupSpec[MuteLogic]()
     gs_fur_pic_msg_man: GroupSpec[FurPicMsgMan] = GroupSpec[FurPicMsgMan]()
     gls_mute_man: GroupLocalStorage[MuteMan] = GroupLocalStorage[MuteMan]()
-    gls_throttle: GroupLocalStorage[ThrottleMan] = GroupLocalStorage[ThrottleMan]()
 
     bili: Inject['Bili']
     known_groups: Inject['KnownGroups']
@@ -125,6 +125,7 @@ class Fur(Plugin):
     achv: Inject['Achv']
     admin: Inject['Admin']
     voucher: Inject['Voucher']
+    throttle: Inject['Throttle']
 
     FETCH_AUTHOR_HISTORY_SIZE: Final = 10
     FETCH_IMG_PATH_HISTORY_SIZE: Final = 50
@@ -321,7 +322,8 @@ class Fur(Plugin):
         return ['消耗了一张兑奖券, 解除了禁言状态']
 
     @delegate(InstrAttr.FORECE_BACKUP)
-    async def get_pic(self, expr: str, author: Optional[At], group: Group, mute_logic: MuteLogic, glse_gls_mute_man_: gls_mute_man.event_t(), throttle_man: ThrottleMan, msg_op: Optional[MsgOp], member_op: GroupMemberOp, source_op: SourceOp, fur_pic_msg_man: FurPicMsgMan, *, mute_targets: set[int]=None, factor: int=1, reset_cd: bool=True):
+    @throttle_config(name='返图', achv_speedup=False, effective_speedup=False, enable_min_duration=False)
+    async def get_pic(self, expr: str, author: Optional[At], group: Group, mute_logic: MuteLogic, glse_gls_mute_man_: gls_mute_man.event_t(), msg_op: Optional[MsgOp], member_op: GroupMemberOp, source_op: SourceOp, fur_pic_msg_man: FurPicMsgMan, *, mute_targets: set[int]=None, factor: int=1, reset_cd: bool=True):
         author = None
         glse_gls_mute_man = typing.cast(GroupLocalStorageAsEvent[MuteMan], glse_gls_mute_man_)
         
@@ -576,7 +578,7 @@ class Fur(Plugin):
                     await self.achv.submit(FurAchv.SUN)
 
                 if '灯泡' not in who and reset_cd:
-                    throttle_man.mark_invoked()
+                    await self.throttle.reset(fn=self.get_pic)
 
                 return skip_img
 
@@ -586,14 +588,7 @@ class Fur(Plugin):
                 return f'没有找到{who_nick}的返图'
             
             if '灯泡' not in who and reset_cd:
-                cooldown_reamins = throttle_man.get_cooldown_remains(6 * 60 * 60)
-                if cooldown_reamins > 0:
-                    if msg_op is not None:
-                        await member_op.send_temp([
-                            f'返图功能冷却中, 请{get_delta_time_str(cooldown_reamins, use_seconds=False)}后再试'
-                        ])
-                        self.admin.mark_recall_protected(msg_op.msg.id)
-                        await msg_op.recall()
+                if not await self.throttle.do(fn=self.get_pic, recall=True):
                     return
             
             author_folder_names = [

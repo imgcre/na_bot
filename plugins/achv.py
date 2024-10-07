@@ -247,6 +247,13 @@ class Achv(Plugin, InjectNotifier):
         if extra.obtained_ts is None: 
             return extra.create_ts
         return extra.obtained_ts
+
+    @delegate()
+    async def get_achv_collected_count(self, e:AchvEnum, man: Optional[CollectedAchvMan]):
+        extra = man.get_achv_extra(e)
+        if extra is None: 
+            return 0
+        return extra.obtained_cnt
     
     @delegate()
     async def aka_to_achv(self, aka: str):

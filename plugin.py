@@ -24,7 +24,7 @@ import traceback
 from collections.abc import Iterable
 from mirai.models.api import RespOperate
 
-from utilities import AchvEnum, GroupMemberOp, GroupOp, Msg, MsgOp, Overrides, Redirected, ResolverMixer, SourceOp, Target, User, bind, get_logger
+from utilities import AchvEnum, GroupMemberOp, GroupOp, Msg, MsgOp, Overrides, Redirected, ResolverMixer, SourceOp, Target, User, bind, ensure_attr, get_logger, to_unbind
 
 logger = get_logger()
 
@@ -212,7 +212,7 @@ def delegate(*attr):
             else:
                 return await ctx_wrapper(ctx)
 
-            
+        to_unbind(fn)._delegated_ = True
         return wrapper
     return deco
 
@@ -1175,24 +1175,6 @@ class PluginConfig():
     name: str = field(init=False)
     backup_enabled = False
     ...
-
-T = TypeVar('T')
-def ensure_attr(target, cls: Type[T]) -> T:
-    attr_name = get_cls_attr_name(cls)
-    return create_or_get_attr(target, attr_name, cls)
-
-T = TypeVar('T')
-def guard_attr(target, cls: Type[T]) -> bool:
-    attr_name = get_cls_attr_name(cls)
-    return hasattr(target, attr_name)
-
-def get_cls_attr_name(cls):
-    return f'__{inflection.underscore(cls.__name__).upper()}__'
-
-def create_or_get_attr(target, attr_name, factory):
-    if not hasattr(target, attr_name):
-        setattr(target, attr_name, factory())
-    return getattr(target, attr_name)
 
 def route(name):
     def wrapper(target):

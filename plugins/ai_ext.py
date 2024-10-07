@@ -10,12 +10,13 @@ from mirai.models.entities import GroupMember
 
 from typing import TYPE_CHECKING
 
-from utilities import AchvRarity, AchvOpts, GroupLocalStorage, GroupMemberOp, MsgOp, SourceOp, ThrottleMan, get_delta_time_str, AchvEnum, handler
+from utilities import AchvRarity, AchvOpts, GroupLocalStorage, GroupMemberOp, MsgOp, SourceOp, get_delta_time_str, AchvEnum, handler, throttle_config
 if TYPE_CHECKING:
     from plugins.achv import Achv
     from plugins.events import Events
     from plugins.gpt import Gpt
     from plugins.admin import Admin
+    from plugins.throttle import Throttle
 
 class AiExtAchv(AchvEnum):
     AI_COOLDOWN = 0, 'AI冷却中', '主动和bot对话功能在冷却状态下时自动获得', AchvOpts(display_pinned=True, locked=True, hidden=True, display='🆒', display_weight=-1)
@@ -28,13 +29,13 @@ class CustomMan():
 @route('AI拓展')
 @enable_backup
 class AiExt(Plugin):
-    gls_throttle: GroupLocalStorage[ThrottleMan] = GroupLocalStorage[ThrottleMan]()
     gls_custom: GroupLocalStorage[CustomMan] = GroupLocalStorage[CustomMan]()
 
     achv: Inject['Achv']
     events: Inject['Events']
     gpt: Inject['Gpt']
     admin: Inject['Admin']
+    throttle: Inject['Throttle']
     
 
     MAX_COOLDOWN_DURATION: Final = 6 * 60 * 60
@@ -64,65 +65,13 @@ class AiExt(Plugin):
         if res is not None:
             await self.bot.send(event, res)
 
-    @handler
-    @delegate(InstrAttr.FORECE_BACKUP)
-    async def on_effective_speech(self, event: EffectiveSpeechEvent, man: ThrottleMan):
-        man.inc_effective_speech_cnt()
-
-    @delegate()
-    async def check_avaliable(self, man: Optional[ThrottleMan], member_op: GroupMemberOp, msg_op: Optional[MsgOp], *, recall: bool=False):
-        from plugins.admin import AdminAchv
-        from plugins.live import LiveAchv
-        
-        use_min_duration = False
-        for e in (AdminAchv.ADMIN, LiveAchv.CAPTAIN):
-            if await self.achv.is_used(e):
-                use_min_duration = True
-
-        # print('[check_achvs]')
-        # 需要至少一个稀有成就
-        obtained_achvs = await self.achv.get_obtained()
-        obtained_rare_achvs = self.achv.filter_by_min_rarity(obtained_achvs, AchvRarity.RARE)
-        if len(obtained_rare_achvs) < 2:
-            raise RuntimeError('需要至少持有两枚稀有级及以上成就')
-
-        grouped = self.achv.group_by_rarity(obtained_achvs)
-        achv_cnts = {k: len(v) for k, v in grouped.items()}
-
-        speedup = 0
-
-        # print(f'{achv_cnts=}')
-
-        for k, v in achv_cnts.items():
-            if k in self.SPEEDUP_LOOKUP:
-                speedup += self.SPEEDUP_LOOKUP[k] * v
-
-        if man is None: return True
-
-        # print(f'{speedup=}, {man.get_effective_speech_cnt()=}')
-        speedup += self.SPEEDUP_EFFECTIVE_SPEECH * man.get_effective_speech_cnt()
-        
-        cooldown_duration = self.MAX_COOLDOWN_DURATION - speedup
-        if cooldown_duration < self.MIN_COOLDOWN_DURATION or use_min_duration:
-            cooldown_duration = self.MIN_COOLDOWN_DURATION
-
-        cooldown_reamins = man.get_cooldown_remains(cooldown_duration)
-
-        # print(f'[check_cooldown_reamins], {cooldown_reamins=}, {cooldown_duration=}, {speedup=}')
-        if cooldown_reamins > 0:
-            print(f'{msg_op=}, {recall=}')
-            if msg_op is not None and recall:
-                if cooldown_reamins < 60 and not use_min_duration:
-                    await self.achv.submit(AiExtAchv.EDGE)
-                await member_op.send_temp([
-                    f'AI功能冷却中, 请{get_delta_time_str(cooldown_reamins, use_seconds=False)}后再试, 多多发言可以大幅减少冷却时间哦'
-                ])
-                self.admin.mark_recall_protected(msg_op.msg.id)
-                await msg_op.recall()
-            # raise RuntimeError(f'冷却中, 请{get_delta_time_str(cooldown_reamins, use_seconds=False)}后再试, 多多发言可以大幅减少冷却时间哦')
-            return False
-        
-        return True
+    @throttle_config(name='AI')
+    async def check_avaliable(self, *, recall: bool=False):
+        cooldown_reamins = await self.throttle.get_cooldown_reamins()
+        use_min_duration = await self.throttle.is_use_min_duration()
+        if recall and not not use_min_duration and cooldown_reamins > 0 and cooldown_reamins < 60:
+            await self.achv.submit(AiExtAchv.EDGE)
+        return await self.throttle.do(recall=recall, cooldown_reamins=cooldown_reamins)
 
     def flatten(self, r: list, f: list = None):
         if f is None:
@@ -192,16 +141,15 @@ class AiExt(Plugin):
     def is_chat_seq_msg(self, msg_id: int):
         return msg_id in self.ai_resp_msg_ids
 
-    @delegate(InstrAttr.FORECE_BACKUP)
-    async def mark_invoked(self, man: ThrottleMan, member: GroupMember):
-        
-        man.mark_invoked()
+    async def mark_invoked(self):
+        await self.throttle.reset(fn=self.check_avaliable)
         await self.achv.submit(AiExtAchv.AI_COOLDOWN, silent=True)
 
     @any_instr()
     async def update_cd_state(self):
         try:
-            if await self.check_avaliable():
+            cooldown_reamins = await self.throttle.get_cooldown_reamins(fn=self.check_avaliable)
+            if cooldown_reamins <= 0:
                 await self.achv.remove(AiExtAchv.AI_COOLDOWN, force=True)
         except: ...
 

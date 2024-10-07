@@ -16,12 +16,13 @@ import json
 
 from typing import TYPE_CHECKING, Final
 
-from utilities import AchvEnum, AchvInfo, AchvOpts, AchvRarity, GroupLocalStorage, UserSpec, breakdown_chain_sync, get_logger
+from utilities import AchvEnum, AchvInfo, AchvOpts, AchvRarity, GroupLocalStorage, UserSpec, breakdown_chain_sync, get_logger, throttle_config
 
 if TYPE_CHECKING:
     from plugins.achv import Achv
     from plugins.bili import Bili
     from plugins.known_groups import KnownGroups
+    from plugins.throttle import Throttle
 
 logger = get_logger()
 
@@ -99,8 +100,8 @@ class Live(Plugin):
     gls_captain: GroupLocalStorage[CaptainMan] = GroupLocalStorage[CaptainMan]()
 
     achv: Inject['Achv']
-
     known_groups: Inject['KnownGroups']
+    throttle: Inject['Throttle']
 
     def __init__(self) -> None:
         self.mqtt_client = None
@@ -275,20 +276,24 @@ class Live(Plugin):
         return future.result()
 
     @top_instr('绑定账号', InstrAttr.FORECE_BACKUP)
+    @throttle_config(name='账号绑定', max_cooldown_duration=30*60)
     async def bind_account(self, info: UserBindInfo, member: GroupMember):
-        if info.is_bound(): return '已完成绑定, 无需重复操作'
-        if not self.is_living and member.id not in config.SUPER_ADMINS: return '当前未开播'
+        async with self.throttle as passed:
+            if not passed: return
+            
+            if info.is_bound(): return '已完成绑定, 无需重复操作'
+            if not self.is_living and member.id not in config.SUPER_ADMINS: return '当前未开播'
 
-        confirm_code = info.start_bind(from_group_id=member.group.id)
-        await self.bot.send_temp_message(member.id, member.group.id, [
-            f'请在直播间发送弹幕(不要忘记后面的六位英文字母也要包括在弹幕中):'
-        ])
-        await asyncio.sleep(0.5)
-        await self.bot.send_temp_message(member.id, member.group.id, [
-            f'确认绑定{confirm_code}'
-        ])
-        
-        return f'已开始绑定流程, 请留意bot发送的私信'
+            confirm_code = info.start_bind(from_group_id=member.group.id)
+            await self.bot.send_temp_message(member.id, member.group.id, [
+                f'请在直播间发送弹幕(不要忘记后面的六位英文字母也要包括在弹幕中):'
+            ])
+            await asyncio.sleep(0.5)
+            await self.bot.send_temp_message(member.id, member.group.id, [
+                f'确认绑定{confirm_code}'
+            ])
+            
+            return f'已开始绑定流程, 请留意bot发送的私信'
 
     @top_instr('截屏')
     async def screenshot_cmd(self, member: GroupMember):

@@ -5,7 +5,7 @@ from mirai.models.entities import GroupMember
 from plugin import Inject, Plugin, delegate, enable_backup, fall_instr, top_instr, any_instr, InstrAttr, route
 from dataclasses import asdict, dataclass
 import time
-from utilities import AchvEnum, AchvOpts, AchvRarity, get_delta_time_str
+from utilities import AchvEnum, AchvOpts, AchvRarity, get_delta_time_str, throttle_config
 from mirai.models.message import MarketFace
 
 from typing import TYPE_CHECKING
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from plugins.check_in import CheckIn
     from plugins.achv import Achv
     from plugins.ai_ext import AiExt
+    from plugins.throttle import Throttle
 
 class RestAchv(AchvEnum):
     SLEEPTALKING = 0, '梦呓', '在睡觉状态中发言', AchvOpts(condition_hidden=True, custom_obtain_msg='说了句梦话', display='💭')
@@ -73,6 +74,7 @@ class Rest(Plugin):
     achv: Inject['Achv']
     ai_ext: Inject['AiExt']
     check_in: Inject['CheckIn']
+    throttle: Inject['Throttle']
 
     MIN_SLEEP_DURATION: Final[float] = 60
 
@@ -93,22 +95,11 @@ class Rest(Plugin):
         ...
     
     @delegate(InstrAttr.FORECE_BACKUP)
+    @throttle_config(name='睡觉', max_cooldown_duration=2*60*60)
     async def go_to_sleep(self, who: GroupMember):
-        def try_get_rest_history():
-            if who.group.id not in self.history:
-                return
-            history_of_group = self.history[who.group.id]
-            if who.id not in history_of_group:
-                return
-            return history_of_group[who.id]
 
-        rest_history = try_get_rest_history()
-        if rest_history is not None:
-            timedelta_since_last_awake = time.time() - rest_history.last_awake_ts
-            MIN_REST_TIMEDELTA = 60 * 60 * 2
-            if timedelta_since_last_awake < MIN_REST_TIMEDELTA:
-                return f'现在还不能睡觉, 请{get_delta_time_str(MIN_REST_TIMEDELTA - timedelta_since_last_awake, use_seconds=False)}后再试'
-            ...
+        if not await self.throttle.do():
+            return
 
         if who.group.id not in self.bed:
             self.bed[who.group.id] = {}
@@ -228,6 +219,7 @@ class Rest(Plugin):
         rest_history.last_awake_ts = time.time()
 
         await self.achv.remove(RestAchv.SLEEPING, force=True)
+        await self.throttle.reset(fn=self.go_to_sleep)
 
         if info.is_invalid():
             return [

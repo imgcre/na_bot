@@ -9,7 +9,7 @@ import time
 from typing import Dict, Optional, Union
 from mirai import At
 from plugin import AchvCustomizer, Inject, InjectNotifier, InstrAttr, Plugin, any_instr, card_changed_instr, delegate, top_instr, route, enable_backup
-from utilities import AchvEnum, AchvInfo, AchvRarity, AchvRarityVal, AdminType, GroupLocalStorage, GroupOp, breakdown_chain_sync, get_logger
+from utilities import AchvEnum, AchvInfo, AchvRarity, AchvRarityVal, AdminType, GroupLocalStorage, GroupOp, breakdown_chain_sync, get_logger, throttle_config
 from regex_emoji import EMOJI_REGEXP, EMOJI_SEQUENCE
 import typing
 from mirai.models.entities import GroupMember, MemberInfoModel
@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from plugins.renderer import Renderer
     from plugins.admin import Admin
+    from plugins.throttle import Throttle
 
 logger = get_logger()
 
@@ -81,6 +82,7 @@ class Achv(Plugin, InjectNotifier):
 
     renderer: Inject['Renderer']
     admin: Inject['Admin']
+    throttle: Inject['Throttle']
 
     def __init__(self):
         self.registed_achv: Dict[Plugin, EnumMeta] = {}
@@ -349,37 +351,39 @@ class Achv(Plugin, InjectNotifier):
                 if not result:
                     return [f'为', at, f' 清空了{aka}的进度...']
 
-    
-
     @top_instr('成就')
+    @throttle_config(name='成就', max_cooldown_duration=1*60*60)
     async def disp_achv(self, man: Optional[CollectedAchvMan]):
-        if man is None or len(man.achvs) == 0:
-            return '尚未获得任何成就'
-        
-        achvs = []
+        async with self.throttle as passed:
+            if not passed: return
 
-        for achv_enum, extra in man.achvs.items():
-            info = typing.cast(AchvInfo, achv_enum.value)
-            if info.opts.hidden: continue
-            obtained_ts = await self.get_achv_obtained_ts(achv_enum)
-            item = {
-                'aka': info.aka,
-                'obtained_ts': obtained_ts,
-                'target_obtained_cnt': info.opts.target_obtained_cnt,
-                'obtained_cnt': extra.obtained_cnt,
-                'opts': {
-                    'rarity': info.opts.rarity.name,
-                    'is_punish': info.opts.is_punish,
-                    'emoji_display': info.get_display_text() if EMOJI_REGEXP.fullmatch(info.get_display_text()) else None
-                },
-                'is_eligible': await self.is_deletable(achv_enum) and info.opts.rarity.value.level >= AchvRarity.UNCOMMON.value.level,
-            }
-            achvs.append(item)
+            if man is None or len(man.achvs) == 0:
+                return '尚未获得任何成就'
+            
+            achvs = []
 
-        await self.renderer.render_as_task(url='member-achvs', data={
-            'name': await self.get_raw_member_name(),
-            'achvs': achvs
-        })
+            for achv_enum, extra in man.achvs.items():
+                info = typing.cast(AchvInfo, achv_enum.value)
+                if info.opts.hidden: continue
+                obtained_ts = await self.get_achv_obtained_ts(achv_enum)
+                item = {
+                    'aka': info.aka,
+                    'obtained_ts': obtained_ts,
+                    'target_obtained_cnt': info.opts.target_obtained_cnt,
+                    'obtained_cnt': extra.obtained_cnt,
+                    'opts': {
+                        'rarity': info.opts.rarity.name,
+                        'is_punish': info.opts.is_punish,
+                        'emoji_display': info.get_display_text() if EMOJI_REGEXP.fullmatch(info.get_display_text()) else None
+                    },
+                    'is_eligible': await self.is_deletable(achv_enum) and info.opts.rarity.value.level >= AchvRarity.UNCOMMON.value.level,
+                }
+                achvs.append(item)
+
+            await self.renderer.render_as_task(url='member-achvs', data={
+                'name': await self.get_raw_member_name(),
+                'achvs': achvs
+            })
     
     @top_instr('进度')
     async def achv_progress(self, aka: str, man: Optional[CollectedAchvMan]):

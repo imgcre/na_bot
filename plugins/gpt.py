@@ -645,10 +645,7 @@ class Gpt(Plugin):
         if time.time() - checkin_ts_today < 60:
             return
 
-        if not await self.ai_ext.check_avaliable(): return
-        resp = await self.run(chain=None)
-        await self.ai_ext.as_chat_seq(mc=resp)
-        await self.ai_ext.mark_invoked()
+        await self.enhanced_run()
 
     @delegate()
     async def get_current_member_name(self, member: GroupMember):
@@ -693,9 +690,9 @@ class Gpt(Plugin):
     #     return [f'{who}{"".join(msg)}~']
 
     @delegate()
-    async def enhanced_run(self, *, comps: list[MessageComponent], recall: bool=False):
+    async def enhanced_run(self, *, comps: Optional[list[MessageComponent]]=None, recall: bool=False):
         if not await self.ai_ext.check_avaliable(recall=recall): return
-        resp = await self.run(chain=MessageChain(comps))
+        resp = await self.run(chain=MessageChain(comps) if comps is not None else None)
         await self.ai_ext.as_chat_seq(mc=resp)
         await self.ai_ext.mark_invoked()
         ...

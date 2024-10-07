@@ -740,3 +740,6 @@ def to_unbind(fn):
     if hasattr(fn, '__func__'):
         return fn.__func__
     return fn
+
+def is_nested(func):
+    return func.__code__.co_flags & inspect.CO_NESTED != 0

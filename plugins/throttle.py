@@ -6,7 +6,7 @@ import traceback
 from typing import Callable, TYPE_CHECKING, Final, Optional
 from plugin import Inject, InstrAttr, Plugin, delegate, enable_backup, route
 from mirai.models.entities import GroupMember
-from utilities import AchvRarity, GroupLocalStorage, GroupMemberOp, MsgOp, ThrottleConfig, ensure_attr, get_delta_time_str, to_unbind
+from utilities import AchvRarity, GroupLocalStorage, GroupMemberOp, MsgOp, ThrottleConfig, ensure_attr, get_delta_time_str, is_nested, to_unbind
 
 if TYPE_CHECKING:
     from plugins.achv import Achv
@@ -25,7 +25,7 @@ class FnThrottleInfo():
 
 @dataclass
 class ThrottleMan():
-    fn_infos: dict[Callable, FnThrottleInfo] = field(default_factory=dict)
+    fn_infos: dict[str, FnThrottleInfo] = field(default_factory=dict)
 
 @route('限流')
 @enable_backup
@@ -57,9 +57,9 @@ class Throttle(Plugin):
         else:
             fn = to_unbind(fn)
 
-        if fn not in man.fn_infos:
+        if fn.__qualname__ not in man.fn_infos:
             return 0
-        fn_info = man.fn_infos[fn]
+        fn_info = man.fn_infos[fn.__qualname__]
 
         use_min_duration = await self.is_use_min_duration(fn=fn)
             
@@ -94,9 +94,9 @@ class Throttle(Plugin):
         else:
             fn = to_unbind(fn)
 
-        if fn not in man.fn_infos:
+        if fn.__qualname__ not in man.fn_infos:
             return True
-        fn_info = man.fn_infos[fn]
+        fn_info = man.fn_infos[fn.__qualname__]
 
         if cooldown_reamins is None:
             cooldown_reamins = await self.get_cooldown_reamins(fn=fn)
@@ -131,7 +131,7 @@ class Throttle(Plugin):
         return False
 
     @delegate(InstrAttr.FORECE_BACKUP)
-    async def reset(self, man: ThrottleMan, *, fn: Callable):
+    async def reset(self, man: ThrottleMan, *, fn: Callable=None):
         from plugins.meow import MeowAchv
 
         if fn is None:
@@ -139,17 +139,17 @@ class Throttle(Plugin):
         else:
             fn = to_unbind(fn)
 
-        man.fn_infos[fn] = FnThrottleInfo(
+        man.fn_infos[fn.__qualname__] = FnThrottleInfo(
             effective_speech_cnt_snapshot=await self.achv.get_achv_collected_count(MeowAchv.CACTUS),
         )
 
     def _get_caller_fn(self):
-        direct_caller = self._get_caller_fn_internal(depth=1)
-        target_caller_depth = 2
-        is_delegate = hasattr(direct_caller, "_delegated_")
-        if is_delegate:
-            target_caller_depth += 3
-        target_caller = self._get_caller_fn_internal(depth=target_caller_depth)
+        i = 2
+        while True:
+            target_caller = self._get_caller_fn_internal(depth=i)
+            i += 1
+            if not is_nested(target_caller):
+                break
         return target_caller
     
     def _get_caller_fn_internal(self, *, depth: int=0):

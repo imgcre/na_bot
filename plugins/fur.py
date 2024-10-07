@@ -578,7 +578,7 @@ class Fur(Plugin):
                     await self.achv.submit(FurAchv.SUN)
 
                 if '灯泡' not in who and reset_cd:
-                    await self.throttle.reset(fn=self.get_pic)
+                    await self.throttle.reset()
 
                 return skip_img
 
@@ -588,7 +588,7 @@ class Fur(Plugin):
                 return f'没有找到{who_nick}的返图'
             
             if '灯泡' not in who and reset_cd:
-                if not await self.throttle.do(fn=self.get_pic, recall=True):
+                if not await self.throttle.do(recall=True):
                     return
             
             author_folder_names = [

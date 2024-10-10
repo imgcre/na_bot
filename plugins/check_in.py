@@ -5,7 +5,7 @@ from mirai import At, GroupMessage
 from plugin import AchvCustomizer, Inject, Plugin, any_instr, delegate, enable_backup, nudge_instr, top_instr, route, InstrAttr
 from mirai.models.message import Image
 from mirai.models.entities import GroupMember
-from utilities import AchvEnum, AchvOpts, AchvRarity, AdminType, GroupLocalStorage, GroupLocalStorageAsEvent, GroupMemberOp
+from utilities import AchvEnum, AchvOpts, AchvRarity, AdminType, GroupLocalStorage, GroupLocalStorageAsEvent, GroupMemberOp, throttle_config
 import pytz
 from datetime import datetime
 import time
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from plugins.renderer import Renderer
     from plugins.achv import Achv
     from plugins.admin import Admin
+    from plugins.throttle import Throttle
 
 class CheckInAchv(AchvEnum):
     CHAMPION = 0, '火急火燎', '获得某日签到第一名', AchvOpts(display='🚀')
@@ -122,6 +123,7 @@ class CheckIn(Plugin, AchvCustomizer):
     renderer: Inject['Renderer']
     achv: Inject['Achv']
     admin: Inject['Admin']
+    throttle: Inject['Throttle']
 
     @delegate()
     async def is_checked_in_today(self, man: Optional[CheckInMan]):
@@ -143,11 +145,15 @@ class CheckIn(Plugin, AchvCustomizer):
         await self.do_check_in()
 
     @top_instr('帮群友签到', InstrAttr.NO_ALERT_CALLER)
+    @throttle_config(name='互帮互助', max_cooldown_duration=4*60*60)
     async def check_in_proxy(self, at: At):
-        member = await self.member_from(at=at)
-        async with self.override(member):
-            await self.do_check_in(raise_error=True)
-        await self.achv.submit(CheckInAchv.HUGGING_FACE)
+        async with self.throttle as passed:
+            if not passed: return
+
+            member = await self.member_from(at=at)
+            async with self.override(member):
+                await self.do_check_in(raise_error=True)
+            await self.achv.submit(CheckInAchv.HUGGING_FACE)
     
     @any_instr(InstrAttr.INTERCEPT_EXCEPTIONS)
     async def check_in_via_motion(self, event: GroupMessage):

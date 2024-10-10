@@ -108,9 +108,13 @@ class FurPicMsgMan():
 
     ...
 
-class AllFetchedException(Exception): ...
+class FurException(Exception): ...
 
-class PartialFetchedException(Exception): ...
+class FurNotFoundException(FurException): ...
+
+class AllFetchedException(FurException): ...
+
+class PartialFetchedException(FurException): ...
 
 @route('毛毛')
 @enable_backup
@@ -585,7 +589,7 @@ class Fur(Plugin):
             fur_path = self.path.data[who]
 
             if not os.path.exists(fur_path):
-                return f'没有找到{who_nick}的返图'
+                raise FurNotFoundException(f'没有找到{who_nick}的返图')
             
             if '灯泡' not in who and reset_cd:
                 if not await self.throttle.do():

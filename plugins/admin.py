@@ -698,14 +698,17 @@ class Admin(Plugin):
         if man.count >= self.VIOLATION_READY_FOR_PURGE_THRESHOLD:
             await self.achv.submit(AdminAchv.READY_FOR_PURGE)
 
-    @delegate()
+    @delegate(InstrAttr.BACKGROUND)
     async def boardcast_to_admins(self, group: Group, *, mc: list):
         members = await self.bot.member_list(group.id)
 
         for m in members:
             async with self.override(m):
                 if await self.achv.is_used(AdminAchv.ADMIN):
-                    await self.bot.send_temp_message(m.id, m.group.id, [f'【管理消息】【{group.name}】\n', *mc])
+                    try:
+                        await self.bot.send_temp_message(m.id, m.group.id, [f'【管理消息】【{group.name}】\n', *mc])
+                        await asyncio.sleep(3)
+                    except: ...
         ...
 
     @autorun
@@ -919,11 +922,13 @@ class Admin(Plugin):
                             await try_recall('消息中包含不明二维码', '消息中包含不明二维码')
                             return
                     if isinstance(c, Face):
+                        logger.debug(f'face {c.face_id=}, {c.name=}')
                         if c.face_id in (
                             1, #撇嘴
                             14, #微笑
                             19, #吐
                             59, #便便
+                            182, #笑哭
                         ):
                             await try_recall('使用了不友善的表情', '使用了不友善的表情')
                             return

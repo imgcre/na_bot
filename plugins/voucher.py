@@ -18,6 +18,7 @@ class VoucherAchv(AchvEnum):
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from plugins.achv import Achv
+    from plugins.fur import Fur
 
 @dataclass
 class DrawResult():
@@ -87,6 +88,7 @@ class Voucher(Plugin):
     user_sweepstakes: UserSpec[UserVoucherMan] = UserSpec[UserVoucherMan]()
 
     achv: Inject['Achv']
+    fur: Inject['Fur']
 
     PROBS: Final = {
         AchvRarity.UNCOMMON: 0.1,
@@ -117,7 +119,14 @@ class Voucher(Plugin):
     @delegate(InstrAttr.FORECE_BACKUP)
     async def draw(self, aka: str, man: UserVoucherMan):
 
-        ac: AchvEnum = await self.achv.aka_to_achv(aka)
+        try:
+            ac: AchvEnum = await self.achv.aka_to_achv(aka)
+        except Exception as e:
+            try:
+                return await self.fur.get_pic(aka), True
+            except:
+                raise e
+     
         ac_info = typing.cast(AchvInfo, ac.value)
         rarity = ac_info.opts.rarity
         if rarity not in self.PROBS:

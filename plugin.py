@@ -197,11 +197,14 @@ def delegate(*attr):
                     finally:
                         if InstrAttr.FORECE_BACKUP in attr:
                             self.backup_man.set_dirty()
-                async def wrap_with():
-                    with ctx:
-                        await task()
+                
                 if InstrAttr.BACKGROUND in attr:
                     logger.debug('task created')
+                    copied = ctx.copy_overrides_stack()
+                    async def wrap_with():
+                        ctx.set_overrides_stack(copied)
+                        with ctx:
+                            await task()
                     return asyncio.create_task(wrap_with())
                 return await task()
             
@@ -426,7 +429,7 @@ class Context(ResolverMixer):
         self.stack = []
         self.token = None
         self.event = event
-        self.overrides_stack: list[Overrides] = []
+        self.overrides_stack_save = contextvars.ContextVar[list[Overrides]]('overrides_stack_save')
         self.redirected: 'Redirected' = None
         self.debug = False
 
@@ -507,11 +510,24 @@ class Context(ResolverMixer):
         res.extend(self.redirected.mc)
         await self.redirected.source_op.send(res, to=self.redirected.to)
 
+    def get_overrides_stack(self):
+        s = self.overrides_stack_save.get(None)
+        if s is None:
+            s = []
+            self.overrides_stack_save.set(s)
+        return s
+
+    def copy_overrides_stack(self):
+        return self.get_overrides_stack().copy()
+
+    def set_overrides_stack(self, s):
+        self.overrides_stack_save.set(s)
+
     def push_overrides(self, o: Overrides):
-        self.overrides_stack.append(o)
+        self.get_overrides_stack().append(o)
     
     def remove_overrides(self, o: Overrides):
-        self.overrides_stack.remove(o)
+        self.get_overrides_stack().remove(o)
 
     def set_redirected(self, redirected: 'Redirected'):
         self.redirected = redirected
@@ -525,7 +541,7 @@ class Context(ResolverMixer):
             return await _def_factory()
 
     def get_override_sync(self, t):
-        for overrides in reversed(self.overrides_stack):
+        for overrides in reversed(self.get_overrides_stack()):
             for val in overrides.vals:
                 if isinstance(val, t):
                     return val

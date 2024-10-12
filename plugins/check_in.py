@@ -245,6 +245,8 @@ class CheckIn(Plugin, AchvCustomizer):
         if man.if_full_checked_in_this_month(consecutive_days):
             await self.achv.submit(CheckInAchv.PERFECT_ATTENDANCE, silent=silent)
 
+        await self.admin.dec_violation_cnt()
+
         await op.nudge()
         await self.achv.update_member_name()
 

@@ -663,6 +663,12 @@ class Admin(Plugin):
     async def get_admins(self):
         ...
 
+    @delegate()
+    async def dec_violation_cnt(self, man: ViolationMan):
+        if man.count > 0:
+            man.count -= 1
+            self.backup_man.set_dirty()
+
     @delegate(InstrAttr.FORECE_BACKUP)
     async def inc_violation_cnt(self, member: GroupMember, gop: GroupOp, man: ViolationMan, *, reason: str=None, to: int=1, hint: str=None):
         if await self.achv.has(AdminAchv.READY_FOR_PURGE):
@@ -711,23 +717,23 @@ class Admin(Plugin):
                     except: ...
         ...
 
-    @autorun
-    async def auto_clean_all_violation_cnt(self, ctx: Context):
-        while True:
-            await asyncio.sleep(1)
-            with ctx:
-                tz = pytz.timezone('Asia/Shanghai')
-                today = datetime.now(tz=tz)
-                is_a_week_ago = time.time() - self.last_auto_clean_all_violation_cnt_ts > 60 * 60 * 24 * 3
-                # print(f'{is_a_week_ago=}, {today.weekday()=}, {self.last_auto_clean_all_violation_cnt_ts=}')
-                if today.weekday() >= 4 and today.hour >= 12 and is_a_week_ago:
-                    for item_group in self.gls_violation.groups.values():
-                        for man in item_group.values():
-                            man.count = 0
-                    self.last_auto_clean_all_violation_cnt_ts = time.time()
-                    self.backup_man.set_dirty()
-                    for group_id in self.gls_violation.groups.keys():
-                        await self.bot.send_group_message(group_id, ['【功德清空】功德箱里空空如也。。。'])
+    # @autorun
+    # async def auto_clean_all_violation_cnt(self, ctx: Context):
+    #     while True:
+    #         await asyncio.sleep(1)
+    #         with ctx:
+    #             tz = pytz.timezone('Asia/Shanghai')
+    #             today = datetime.now(tz=tz)
+    #             is_a_week_ago = time.time() - self.last_auto_clean_all_violation_cnt_ts > 60 * 60 * 24 * 3
+    #             # print(f'{is_a_week_ago=}, {today.weekday()=}, {self.last_auto_clean_all_violation_cnt_ts=}')
+    #             if today.weekday() >= 4 and today.hour >= 12 and is_a_week_ago:
+    #                 for item_group in self.gls_violation.groups.values():
+    #                     for man in item_group.values():
+    #                         man.count = 0
+    #                 self.last_auto_clean_all_violation_cnt_ts = time.time()
+    #                 self.backup_man.set_dirty()
+    #                 for group_id in self.gls_violation.groups.keys():
+    #                     await self.bot.send_group_message(group_id, ['【功德清空】功德箱里空空如也。。。'])
             
         ...
 

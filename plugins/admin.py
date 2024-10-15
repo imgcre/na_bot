@@ -498,13 +498,13 @@ class Admin(Plugin):
 
     @top_instr('关联', InstrAttr.FORECE_BACKUP, InstrAttr.NO_ALERT_CALLER)
     async def associate_cmd(self, man: MemberAssociateMan, *ats: At):
-        async with self.privilege():
+        async with self.privilege(type=AdminType.SUPER):
             man.associate(*[at.target for at in ats])
             return 'ok'
     
     @top_instr('解除关联', InstrAttr.FORECE_BACKUP)
     async def disassociate_cmd(self, man: MemberAssociateMan, *ats: At):
-        async with self.privilege():
+        async with self.privilege(type=AdminType.SUPER):
             man.disassociate(*[at.target for at in ats])
             return 'ok'
     
@@ -525,8 +525,8 @@ class Admin(Plugin):
     async def get_associated(self, man: MemberAssociateMan, *, member_id: int):
         return man.get_associated(member_id)
 
-    @top_instr('撤回')
-    async def recall_cmd(self, group: Group, quote: Optional[Quote], m_id: Optional[int], custom_reason: Optional[str]):
+    @top_instr('(?P<only>仅?)撤回')
+    async def recall_cmd(self, group: Group, only: PathArg[bool], quote: Optional[Quote], m_id: Optional[int], custom_reason: Optional[str]):
         async with self.privilege():
             for _ in range(1):
                 if quote is not None:
@@ -537,6 +537,8 @@ class Admin(Plugin):
             else:
                 return '未选择目标消息'
             
+            if only:
+                self.recall_by_bot_msgs.add(m_id)
             await self.bot.recall(m_id, group.id)
             if custom_reason is not None:
                 self.custom_recall_resons[m_id] = custom_reason

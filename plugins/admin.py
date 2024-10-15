@@ -496,17 +496,17 @@ class Admin(Plugin):
             special_title=title
         ))
 
-    # @top_instr('关联', InstrAttr.FORECE_BACKUP, InstrAttr.NO_ALERT_CALLER)
-    # @admin
-    # async def associate_cmd(self, man: MemberAssociateMan, *ats: At):
-    #     man.associate(*[at.target for at in ats])
-    #     return 'ok'
+    @top_instr('关联', InstrAttr.FORECE_BACKUP, InstrAttr.NO_ALERT_CALLER)
+    async def associate_cmd(self, man: MemberAssociateMan, *ats: At):
+        async with self.privilege():
+            man.associate(*[at.target for at in ats])
+            return 'ok'
     
-    # @top_instr('解除关联', InstrAttr.FORECE_BACKUP)
-    # @admin
-    # async def disassociate_cmd(self, man: MemberAssociateMan, *ats: At):
-    #     man.disassociate(*[at.target for at in ats])
-    #     return 'ok'
+    @top_instr('解除关联', InstrAttr.FORECE_BACKUP)
+    async def disassociate_cmd(self, man: MemberAssociateMan, *ats: At):
+        async with self.privilege():
+            man.disassociate(*[at.target for at in ats])
+            return 'ok'
     
     @top_instr('查看关联', InstrAttr.NO_ALERT_CALLER)
     async def get_associated_cmd(self, at: At):

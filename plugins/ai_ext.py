@@ -67,7 +67,7 @@ class AiExt(Plugin):
         use_min_duration = await self.throttle.is_use_min_duration()
         if recall and not not use_min_duration and cooldown_reamins > 0 and cooldown_reamins < 60:
             await self.achv.submit(AiExtAchv.EDGE)
-        return await self.throttle.do(recall=recall, cooldown_reamins=cooldown_reamins)
+        return await self.throttle.do_associated(recall=recall, cooldown_reamins=cooldown_reamins)
 
     def flatten(self, r: list, f: list = None):
         if f is None:

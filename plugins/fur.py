@@ -596,7 +596,7 @@ class Fur(Plugin):
                 raise FurNotFoundException(f'没有找到{who_nick}的返图')
             
             if '灯泡' not in who and reset_cd:
-                if not await self.throttle.do():
+                if not await self.throttle.do_associated():
                     return
             
             author_folder_names = [

@@ -91,11 +91,31 @@ class Throttle(Plugin):
 
     async def __aenter__(self):
         fn = self._get_caller_fn()
-        return await self.do(fn=fn)
+        return await self.do_associated(fn=fn)
 
     async def __aexit__(self, etype, value, traceback):
         fn = self._get_caller_fn()
         await self.reset(fn=fn)
+
+    @delegate()
+    async def do_associated(self, member: GroupMember,
+        *, recall: bool=True, cooldown_reamins: Optional[float]=None, fn: Callable=None
+    ):
+        if fn is None:
+            fn = self._get_caller_fn()
+        else:
+            fn = to_unbind(fn)
+
+        associated: set[int] = await self.admin.get_associated(member_id=member.id)
+        result = True
+        for member_id in associated:
+            curr_member = await self.bot.get_group_member(member.group.id, member_id)
+            if curr_member is None: continue
+            async with self.override(curr_member):
+                if not await self.do(recall=recall, cooldown_reamins=cooldown_reamins, fn=fn):
+                    result = False
+        
+        return result
 
     @delegate()
     async def do(self, man: ThrottleMan, member_op: GroupMemberOp, msg_op: Optional[MsgOp], 

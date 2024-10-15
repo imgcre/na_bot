@@ -98,7 +98,7 @@ class Rest(Plugin):
     @throttle_config(name='睡觉', max_cooldown_duration=2*60*60)
     async def go_to_sleep(self, who: GroupMember):
 
-        if not await self.throttle.do():
+        if not await self.throttle.do_associated():
             return
 
         if who.group.id not in self.bed:

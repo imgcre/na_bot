@@ -782,7 +782,7 @@ class Context(ResolverMixer):
                     if type(curr_arg) is anno:
                         args.append(curr_arg)
                         return
-                    if anno in (str, int, float):
+                    if anno in (str, int, float, bool):
                         if type(curr_arg) is not str or isinstance(curr_arg, Plain):
                             raise ExecFailedError(f'参数类型错误')
                         args.append(anno(curr_arg.text if isinstance(curr_arg, Plain) else curr_arg))

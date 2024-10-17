@@ -7,12 +7,13 @@ from itertools import groupby
 import sys
 import time
 from typing import Dict, Optional, Union
+from event_types import AchvObtainedEvent
 from mirai import At
 from plugin import AchvCustomizer, Inject, InjectNotifier, InstrAttr, Plugin, any_instr, card_changed_instr, delegate, top_instr, route, enable_backup
 from utilities import AchvEnum, AchvInfo, AchvRarity, AchvRarityVal, AdminType, GroupLocalStorage, GroupOp, breakdown_chain_sync, get_logger, throttle_config
 from regex_emoji import EMOJI_REGEXP, EMOJI_SEQUENCE
 import typing
-from mirai.models.entities import GroupMember, MemberInfoModel
+from mirai.models.entities import GroupMember, MemberInfoModel, Group
 from mirai.models.events import MemberCardChangeEvent
 
 from typing import TYPE_CHECKING
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
     from plugins.renderer import Renderer
     from plugins.admin import Admin
     from plugins.throttle import Throttle
+    from plugins.events import Events
 
 logger = get_logger()
 
@@ -83,6 +85,7 @@ class Achv(Plugin, InjectNotifier):
     renderer: Inject['Renderer']
     admin: Inject['Admin']
     throttle: Inject['Throttle']
+    events: Inject['Events']
 
     def __init__(self):
         self.registed_achv: Dict[Plugin, EnumMeta] = {}
@@ -195,6 +198,8 @@ class Achv(Plugin, InjectNotifier):
         
         man.achvs[e].obtained_ts = time.time()
         
+        await self.events.emit(AchvObtainedEvent(e))
+
         if not silent:
             if info.opts.custom_obtain_msg is not None:
                 msg = ['[新成就] ', At(target=member.id), f' {info.opts.custom_obtain_msg}']
@@ -240,6 +245,14 @@ class Achv(Plugin, InjectNotifier):
     async def has(self, e: AchvEnum, man: Optional[CollectedAchvMan]):
         if man is None: return False
         return man.has(e)
+    
+    @delegate()
+    async def get_obtained_member_ids(self, e: AchvEnum, group: Group):
+        result = set()
+        for member_id, man in self.gls.get_data_of_group(group.id).items():
+            if man.has(e):
+                result.add(member_id)
+        return result
     
     @delegate()
     async def get_achv_obtained_ts(self, e:AchvEnum, man: Optional[CollectedAchvMan]):

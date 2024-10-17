@@ -49,6 +49,7 @@ class Meow(Plugin, AchvCustomizer):
     @any_instr()
     async def level_award(self, member: GroupMember):
         info: MemberInfoModel = await self.bot.member_info(member.group.id, member.id).get()
+        if info is None: return
         if info.active.temperature == 100:
             await self.achv.submit(MeowAchv.FULL_LEVEL)
 

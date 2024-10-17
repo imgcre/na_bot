@@ -691,11 +691,22 @@ class Gpt(Plugin):
 
     @delegate()
     async def enhanced_run(self, *, comps: Optional[list[MessageComponent]]=None, recall: bool=False):
+        if comps is not None:
+            txt_len = 0
+            for c in comps:
+                if isinstance(c, Plain):
+                    txt_len += len(c.text)
+                if isinstance(c, str):
+                    txt_len += len(c)
+
+            if txt_len < 10:
+                await self.ai_ext.as_chat_seq(mc=['token贵贵，建议询问bot其他更有价值的问题'])
+                return
+        
         if not await self.ai_ext.check_avaliable(recall=recall): return
         resp = await self.run(chain=MessageChain(comps) if comps is not None else None)
         await self.ai_ext.as_chat_seq(mc=resp)
         await self.ai_ext.mark_invoked()
-        ...
 
     @top_instr('ai|狸花|bot', InstrAttr.NO_ALERT_CALLER)
     async def forced_trigger(self, *comps: MessageComponent):

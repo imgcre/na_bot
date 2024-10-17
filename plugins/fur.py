@@ -52,7 +52,7 @@ class FurAchv(AchvEnum):
     HALF_FULL = 7, '半步轮回境', '单次禁言时长超过30分钟', AchvOpts(rarity=AchvRarity.RARE, custom_obtain_msg='夺造化，转涅盘，握生死，掌轮回。', display='🎭')
     SUPERSATURATED_SOLUTION = 8, '过饱和溶液', '单次禁言时长超过60分钟', AchvOpts(rarity=AchvRarity.EPIC, custom_obtain_msg='即将析出晶体', display='⚗️')
     FORBIDDEN_QUINTET = 9, '禁忌五重奏', '在仍在禁言的状态中继续被禁言五次', AchvOpts(rarity=AchvRarity.UNCOMMON, custom_obtain_msg='奏响了禁忌的五重奏', display='🎼')
-    BAT = 10, '小蝙蝠', '使用指令【#来只暗辰】成功抽到了100次暗辰的图片', AchvOpts(rarity=AchvRarity.EPIC, custom_obtain_msg='打开了传送门', target_obtained_cnt=100, display='🦇')
+    BAT = 10, '小蝙蝠', '使用指令【#来只暗辰】成功抽到了100次暗辰的图片', AchvOpts(rarity=AchvRarity.EPIC, locked=True, custom_obtain_msg='打开了传送门', target_obtained_cnt=100, display='🦇')
 
 class MatchLevel(Enum):
     PERFECT = auto()

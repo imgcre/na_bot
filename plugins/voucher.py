@@ -2,10 +2,12 @@ from dataclasses import dataclass, field
 import time
 from typing import Final, Optional
 import typing
+from decimal import Decimal
 
-from mirai import Image
+from mirai import At, Image
+from mirai.models.entities import GroupMember, MemberInfoModel
 
-from plugin import Inject, Plugin, delegate, enable_backup, instr, top_instr, any_instr, InstrAttr, route
+from plugin import Inject, Plugin, delegate, enable_backup, top_instr, any_instr, InstrAttr, route
 import random
 import random
 from itertools import groupby
@@ -29,22 +31,30 @@ class DrawResult():
 @dataclass
 class ConsumeRecord():
     id: float
-    count: int
+    count: Decimal
     create_ts: float = field(default_factory=time.time)
+
+@dataclass
+class GiftRecord():
+    consume_id: float
+    count: Decimal
+    create_ts: float = field(default_factory=time.time)
+    ...
 
 @dataclass
 class UserVoucherMan(Upgraded):
     results: list[DrawResult] = field(default_factory=list)
     consumes: list[ConsumeRecord] = field(default_factory=list)
+    gifts: list[GiftRecord] = field(default_factory=list)
     in_flow: bool = False
-    count: int = 0
+    count: Decimal = 0
 
     def append_result(self, res: DrawResult):
         self.results.append(res)
         if res.suceeed:
             self.count += 1
 
-    def append_consume(self, cnt: int):
+    def append_consume(self, cnt: Decimal):
         while True:
             n_float = random.random()
             same_id_item = next((r.id for r in self.consumes if r.id == n_float), None)
@@ -53,8 +63,12 @@ class UserVoucherMan(Upgraded):
             self.consumes.append(ConsumeRecord(id=n_float, count=cnt))
             self.count -= cnt
             return n_float
+        
+    def append_gift(self, rec: GiftRecord):
+        self.results.append(rec)
+        self.count += rec.count
 
-    def is_satisfied(self, cnt: int):
+    def is_satisfied(self, cnt: Decimal):
         return self.count >= cnt
     
     def get_count(self):
@@ -100,14 +114,14 @@ class Voucher(Plugin):
     MAG_PUNISHMENT: Final = 0.01 # 惩罚倍率
 
     @delegate()
-    async def is_satisfied(self, user: User, *, cnt: int):
+    async def is_satisfied(self, user: User, *, cnt: Decimal):
         man = self.user_sweepstakes.get_data(user.id)
         if man is None:
             return False
         return man.is_satisfied(cnt)
     
     @delegate()
-    async def consume(self, user: User, *, cnt: int, force: bool=False):
+    async def consume(self, user: User, *, cnt: Decimal, force: bool=False):
         if not force and not await self.is_satisfied(cnt=cnt):
             raise RuntimeError('兑奖券不足')
         
@@ -163,8 +177,6 @@ class Voucher(Plugin):
             await self.achv.remove(VoucherAchv.AFRICAN_CHIEFS, force=True)
         return '\n'.join(outputs), True
 
-        ...
-
     @any_instr()
     async def in_flow_draw_cmd(self, aka: str, man: UserVoucherMan):
         if not man.in_flow: return
@@ -202,6 +214,28 @@ class Voucher(Plugin):
             cnt = man.count
         
         return [f'你当前共持有{cnt}张兑奖券']
+    
+    @top_instr('赠送')
+    async def give_ticket(self, at: Optional[At], me: GroupMember):
+        info: MemberInfoModel = await self.bot.member_info(me.group.id, me.id).get()
+        if info is None:
+            return ['无法获取成员信息']
+        
+        if info.active.temperature < 50:
+            return ['赠送失败: 等级过低']
+
+        if at is None:
+            return ['请指定赠予对象']
+        
+        consume_id = await self.consume(cnt=Decimal('1.1'))
+        member = await self.member_from(at=at)
+        async with self.override(member):
+            await self.recv_ticket(consume_id=consume_id, count=Decimal('1'))
+        return [' 向', at, ' 赠送了一张兑奖券']
+
+    @delegate(InstrAttr.FORECE_BACKUP)
+    async def recv_ticket(self, man: UserVoucherMan, *, consume_id: float, count: Decimal):
+        man.append_gift(GiftRecord(consume_id=consume_id, count=count))
 
     @top_instr('抽奖', InstrAttr.FORECE_BACKUP)
     async def draw_cmd(self, aka: Optional[str], man: UserVoucherMan):

@@ -14,7 +14,6 @@ from itertools import groupby
 from activator import SharpActivator
 import config
 from event_types import EffectiveSpeechEvent, ViolationEvent
-import pytz
 import aiohttp
 from mirai import At, AtAll, Face, GroupMessage, Image, MessageChain, MessageEvent, Plain, TempMessage
 from mirai.models.entities import GroupMember, MemberInfoModel, Group
@@ -25,6 +24,8 @@ import traceback
 from mirai.models.api import RespOperate
 from mirai.models.message import App, MusicShare, Quote, MarketFace, Source, Forward, ForwardMessageNode
 import cn2an
+import os
+import imagehash
 
 import pyzbar.pyzbar
 from PIL import Image as PImage
@@ -537,6 +538,16 @@ class Admin(Plugin):
             else:
                 return '未选择目标消息'
             
+            resp = await self.bot.message_from_id(m_id, group.id)
+            mc = resp.data.message_chain
+        
+            if mc is not None:
+                for comp in mc:
+                    if isinstance(comp, Image):
+                        img = await self.load_image(comp)
+                        img_hash = imagehash.crop_resistant_hash(img)
+                        img.convert('RGB').save(self.path.data['hashes'].of_file(f'{img_hash}.jpg'))
+            
             if only:
                 self.recall_by_bot_msgs.add(m_id)
             await self.bot.recall(m_id, group.id)
@@ -810,10 +821,12 @@ class Admin(Plugin):
         with open(self.path.data.of_file('forbidden_market_face.json'), encoding='utf-8') as f:
             forbidden_market_face_o: dict[str, dict[str, int]] = json.load(f)
 
+        image_hashes = [imagehash.hex_to_multihash(file_name.split('.')[0]) for file_name in os.listdir(self.path.data['hashes'])]
+
         url_regex = r'(https?:\/\/)((([0-9a-z]+\.)+[a-z]+)|(([0-9]{1,3}\.){3}[0-9]{1,3}))(:[0-9]+)?(\/[0-9a-z%/.\-_]*)?(\?[0-9a-z=&%_\-]*)?(\#[0-9a-z=&%_\-]*)?'
         url_pattern  = re.compile(url_regex)
 
-        async def try_recall(reason: Union[str, list], hint: str):
+        async def try_recall(reason: Union[str, list], hint: str, *, only: bool=False):
             if doge_protected:
                 await self.achv.submit(AdminAchv.DOGE)
                 return
@@ -841,9 +854,10 @@ class Admin(Plugin):
                     logger.debug(f'{c=}')
                     return f'{type(c)}'
 
-                await self.boardcast_to_admins(mc=[
-                    f'撤回了"{member.member_name}"({member.id})的消息: \n', *[map_msg_comp(c) for c in event.message_chain if filter_msg_comp(c)]
-                ])
+                if not only:
+                    await self.boardcast_to_admins(mc=[
+                        f'撤回了"{member.member_name}"({member.id})的消息: \n', *[map_msg_comp(c) for c in event.message_chain if filter_msg_comp(c)]
+                    ])
 
             
                 # for ad in self.engine.get_context().admins:
@@ -860,7 +874,8 @@ class Admin(Plugin):
                 #     await self.bot.send_friend_message(ad, mc)
             except: 
                 traceback.print_exc()
-            await self.inc_violation_cnt(reason=reason, hint=hint)
+            if not only:
+                await self.inc_violation_cnt(reason=reason, hint=hint)
 
         if doge_cnt >= MAX_DOGE_CNT:
             await try_recall('太多的狗头', '消息中包含太多的狗头表情包')
@@ -919,16 +934,26 @@ class Admin(Plugin):
                     ...
                 if isinstance(c, MarketFace):
                     for reason, faces in forbidden_market_face_o.items():
+                        only = 'only' in reason
                         if c.id in faces.values():
-                            await try_recall(reason, reason)
+                            await try_recall(reason, reason, only=only)
                             return
-                if not is_in_white_list:
-                    if isinstance(c, Image):
-                        qrcodes = pyzbar.pyzbar.decode(await self.load_image(c))
+                if isinstance(c, Image):
+                    img = await self.load_image(c)
+                    if not is_in_white_list:
+                        qrcodes = pyzbar.pyzbar.decode(img)
                         logger.debug(f'{qrcodes=}')
                         if len(qrcodes) > 0:
                             await try_recall('消息中包含不明二维码', '消息中包含不明二维码')
                             return
+                    target_hash = imagehash.crop_resistant_hash(img)
+                    for full_hash in image_hashes:
+                        seg, dist = full_hash.hash_diff(target_hash)
+                        print(f'{seg=}, {dist=}, {str(full_hash)}')
+                        if seg > 0 and dist < 10 * seg:
+                            await try_recall('不适宜的图片', '不适宜的图片')
+                            return
+                if not is_in_white_list:
                     if isinstance(c, Face):
                         logger.debug(f'face {c.face_id=}, {c.name=}')
                         if c.face_id in (

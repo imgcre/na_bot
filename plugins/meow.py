@@ -13,12 +13,9 @@ if TYPE_CHECKING:
     from plugins.achv import Achv
     from plugins.events import Events
 
-
 class MeowAchv(AchvEnum):
     CACTUS = 0, '仙人球', '累计发送10000条消息', AchvOpts(rarity=AchvRarity.LEGEND, custom_obtain_msg='发大水了', target_obtained_cnt=10000, display='🌵', unit='条有效发言')
     FULL_LEVEL = 1, '一百昏', '群等级达到100级', AchvOpts(rarity=AchvRarity.LEGEND, custom_obtain_msg='满级了', display='💯', dynamic_deletable=True)
-
-# 10000 -> rare
 
 @route('猫叫')
 class Meow(Plugin, AchvCustomizer):

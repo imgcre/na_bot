@@ -2,7 +2,7 @@ from datetime import datetime, date, timedelta
 from mirai import MessageEvent, Plain
 from plugin import AchvCustomizer, Inject, InstrAttr, Plugin, any_instr, delegate, route, top_instr
 from utilities import AchvEnum, AchvOpts, AchvRarity, GroupMemberOp
-from borax.calendars.festivals2 import FestivalLibrary, Festival as Fes
+from borax.calendars.festivals2 import FestivalLibrary, Festival as Fes, SolarFestival
 from dataclasses import dataclass
 import re
 
@@ -16,6 +16,7 @@ class FestivalAchv(AchvEnum):
     FURSUIT_FRIDAY = 2, '肉垫', '在毛毛星期五当天发送包含"毛五"的消息', AchvOpts(rarity=AchvRarity.UNCOMMON, display='🐾', dynamic_deletable=True)
     SPRING_FESTIVAL = 3, '爆竹', '在春节当天发送"新年快乐"', AchvOpts(rarity=AchvRarity.RARE, display='🧨', dynamic_deletable=True)
     CHRISTMAS = 4, '圣诞树', '在圣诞节当天发送"圣诞快乐"', AchvOpts(rarity=AchvRarity.RARE, display='🎄', dynamic_deletable=True)
+    PROGRAMMERS_DAY = 5, '程序员', '在程序员节当天发送"程序员"、"1024"等关键字', AchvOpts(rarity=AchvRarity.RARE, display='👨‍💻', dynamic_deletable=True)
 
 class FursuitFriday():
     def countdown(self, date_obj: date = None):
@@ -75,6 +76,11 @@ class Festival(Plugin, AchvCustomizer):
                 festival=self.library.get_festival('圣诞节'),
                 trigger_regex='圣诞.*?快乐|christmas',
                 associated_achv=FestivalAchv.CHRISTMAS
+            ),
+            FestivalItem(
+                festival=SolarFestival(month=10,day=24),
+                trigger_regex=r'程序员|10.?24',
+                associated_achv=FestivalAchv.PROGRAMMERS_DAY
             ),
         ]
         ...

@@ -550,18 +550,30 @@ class Context(ResolverMixer):
 
     def resolver_mixin(self) -> Dict[type, Callable[..., Any]]:
         async def resolve_user(event: Event):
-            if isinstance(event, (GroupMessage, FriendMessage, StrangerMessage, TempMessage)):
-                return User(event.sender.id)
-            elif isinstance(event, NudgeEvent):
-                return User(event.from_id)
-            elif isinstance(event, GroupRecallEvent):
-                return User(event.author_id)
-            elif isinstance(self.event, MemberJoinRequestEvent):
-                return User(self.event.from_id)
-            elif isinstance(event, (MemberJoinEvent, MemberUnmuteEvent, MemberCardChangeEvent)):
-                return User(event.member.id)
-            else:
+            async def user_from_event():
+                if isinstance(event, (GroupMessage, FriendMessage, StrangerMessage, TempMessage)):
+                    return User(event.sender.id)
+                elif isinstance(event, NudgeEvent):
+                    return User(event.from_id)
+                elif isinstance(event, GroupRecallEvent):
+                    return User(event.author_id)
+                elif isinstance(self.event, MemberJoinRequestEvent):
+                    return User(self.event.from_id)
+                elif isinstance(event, (MemberJoinEvent, MemberUnmuteEvent, MemberCardChangeEvent)):
+                    return User(event.member.id)
+
+            user_oveeride: User = await self.get_override(User)
+            if user_oveeride is not None:
+                return user_oveeride
+
+            member_override: GroupMember = await self.get_override(GroupMember)
+            if member_override is not None:
+                return User(member_override.id)
+            
+            user = await user_from_event()
+            if user is None:
                 raise ExecFailedError(f'消息类型不匹配 USER, {event=}')
+            return user
 
         async def resolve_msg(event: Event):
             async def msg_from_event():

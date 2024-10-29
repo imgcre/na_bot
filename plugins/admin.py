@@ -426,10 +426,10 @@ class Admin(Plugin):
     # async def set_essence(self, group: Group, quote: Quote):
     #     await self.bot.set_essence(quote.id, group.id)
 
-    # @top_instr('设置管理')
-    # @admin
-    # async def set_admin(self, group: Group, at: At):
-    #     await self.bot.member_admin(group.id, at.target, True)
+    @top_instr('设置管理')
+    async def set_admin(self, group: Group, at: At):
+        async with self.privilege(type=AdminType.SUPER):
+            await self.bot.member_admin(group.id, at.target, True)
 
     @top_instr('全体', InstrAttr.NO_ALERT_CALLER)
     async def at_all(self, event: GroupMessage):
